@@ -1,382 +1,208 @@
-# Complete Migration Guide: NixOS to Arch Linux
+# Arch Linux Installation Scripts
 
-This guide walks you through migrating from your sophisticated NixOS setup to Arch Linux while preserving all functionality.
+Modular Arch Linux installation scripts with Btrfs, Snapper, and Limine bootloader.
 
-## Overview
+## Directory Structure
 
-**System Design:**
-- **Root**: 250GB btrfs with snapshots (7 daily + 4 weekly)
-- **Home**: 750GB btrfs (separate, no snapshots)
-- **Boot**: 512MB FAT32 EFI
-- **Bootloader**: Limine with snapshot integration
-- **Desktop**: Hyprland with all your customizations
-- **Secrets**: 1Password via chezmoi integration
-
-## Phase 1: Base Installation
-
-### 1.1 Prepare Installation Media
-```bash
-# Download Arch ISO and create bootable USB
-dd if=archlinux.iso of=/dev/sdX bs=4M status=progress
+```
+.
+├── arch_install_main.sh        # Main installation script
+├── lib/                        # Shared library functions
+│   ├── common.sh               # Common functions and utilities
+│   ├── disk_setup.sh           # Disk partitioning and formatting
+│   ├── system_install.sh       # Base system installation
+│   ├── system_config.sh        # System configuration
+│   ├── gpu_specific.sh         # GPU-specific configurations
+│   ├── bootloader.sh           # Bootloader installation
+│   └── snapper.sh              # Snapper configuration
+└── post_install/               # Post-installation scripts
+    ├── main.sh                 # Post-install orchestrator
+    ├── packages_core.sh        # Core packages
+    ├── packages_desktop.sh     # Desktop environment packages
+    ├── packages_development.sh # Development tools
+    ├── packages_gaming.sh      # Gaming packages
+    ├── system_setup.sh         # System configuration
+    ├── user_setup.sh           # User environment setup
+    └── lib/                    # Copy of lib for post-install
+        ├── common.sh
+        └── gpu_specific.sh
 ```
 
-### 1.2 Boot and Run Installation Script
-```bash
-# Boot from USB, then:
-# Save the arch_install_script.sh and make executable
-chmod +x arch_install_script.sh
-./arch_install_script.sh
-```
+## Usage
 
-**What this does:**
-- Creates optimized btrfs layout with proper subvolumes
-- Sets up Snapper with your retention policy (7 daily + 4 weekly)
-- Installs Limine bootloader with snapshot support
-- Configures AMD graphics drivers
-- Sets up French locale and BÉPO keyboard
-- Creates user with proper groups
+### Base Installation
 
-### 1.3 First Boot
-After installation completes:
-1. Remove USB and reboot
-2. Log in as `vincent` 
-3. Set your password: `passwd`
-4. Test basic functionality
+1. Boot into Arch Linux live ISO
+2. Place all scripts in the same directory structure
+3. Make the main script executable:
+   ```bash
+   chmod +x arch_install_main.sh
+   ```
+4. Run the installation:
+   ```bash
+   ./arch_install_main.sh
+   ```
 
-## Phase 2: Package Installation
+### Post-Installation
 
-### 2.1 Run Post-Installation Script
-```bash
-# Run the post-installation package script
-chmod +x post-install.sh
-./post-install.sh
-```
+After rebooting into the new system:
 
-**What this installs:**
-- **Priority 1**: Work-critical (VPN, development tools, Hyprland)
-- **Priority 2**: Applications and nice-to-have packages
-- **AUR Helper**: paru for AUR package management
-- **Fish Plugins**: Fisher + your essential plugins
-- **System Services**: Auto-update timer, audio services
+1. Log in as your user
+2. Navigate to the post_install directory:
+   ```bash
+   cd ~/post_install
+   ```
+3. Run the post-installation script:
+   ```bash
+   ./main.sh
+   ```
 
-### 2.2 VPN Configuration (Work Critical)
-```bash
-# Edit VPN script with your work details
-hx ~/.local/bin/vpn-connect
+## Host-Specific Configuration
 
-# Replace placeholders:
-# YOUR_VPN_SERVER -> your actual VPN server
-# YOUR_USERNAME -> your work username
+The scripts support hostname-based configuration. You can control which packages and features are installed on specific hosts using the `should_run_for_host` function.
 
-# Test VPN connection
-~/.local/bin/vpn-connect
-```
+### Example Hostnames
 
-## Phase 3: Dotfiles and Configuration
+Configure your system with one of these hostnames to get specific setups:
 
-### 3.1 Install 1Password
-```bash
-# Install 1Password from AUR
-paru -S 1password
+- `workstation` - Full desktop with development and gaming
+- `laptop` - Desktop and development, no gaming
+- `desktop` - Desktop and gaming, limited development
+- `server` - Core packages only, no desktop
 
-# Install 1Password CLI
-paru -S 1password-cli
+### Customizing for Your Hosts
 
-# Sign in to 1Password
-op signin
-```
-
-### 3.2 Install Dank Mono Font
-```bash
-# Copy your Dank Mono font files to:
-mkdir -p ~/.local/share/fonts/DankMono
-cp /path/to/your/dank-mono-files/* ~/.local/share/fonts/DankMono/
-
-# Refresh font cache
-fc-cache -fv
-```
-
-### 3.3 Set Up Chezmoi with 1Password
-```bash
-# Initialize chezmoi (replace with your actual dotfiles repo)
-chezmoi init https://github.com/VincentBerthier/dotfiles.git
-
-# Copy the chezmoi configuration
-mkdir -p ~/.config/chezmoi
-# Copy the chezmoi.toml configuration provided
-
-# Apply dotfiles
-chezmoi apply
-```
-
-### 3.4 Configure SSH Keys via 1Password
-```bash
-# SSH keys will be templated through chezmoi + 1Password
-# Your SSH config should now work with both personal and work keys
-
-# Test SSH key setup
-ssh-add -l
-
-# Test git signing
-git commit --allow-empty -m "test commit"
-```
-
-## Phase 4: Desktop Environment
-
-### 4.1 Hyprland Configuration
-After chezmoi apply, your Hyprland setup should be ready:
+Edit `post_install/main.sh` to customize which features are installed on which hosts:
 
 ```bash
-# Test Hyprland launch
-Hyprland
-
-# If issues, check logs:
-journalctl --user -f
+# Example: only install on specific hosts
+if should_run_for_host "$HOSTNAME" "workstation" "laptop"; then
+    install_development_packages
+fi
 ```
 
-### 4.2 Waybar and Components
-Your Waybar should automatically:
-- Show workspaces correctly per hostname
-- Display custom modules (VPN, backup status, etc.)
-- Handle multi-monitor setup
+## GPU Detection
 
-### 4.3 Terminal Setup
-All terminals should be configured:
-- **Wezterm**: Primary with Lua config and startup sessions
-- **Kitty**: Secondary with transparency and custom keybinds  
-- **Foot**: Fallback terminal
-- **Ghostty**: Modern option
+The scripts automatically detect GPU type (Nvidia or AMD) and install appropriate drivers and configurations:
 
-## Phase 5: Development Environment
+- **Nvidia**: Installs proprietary drivers, configures Wayland support
+- **AMD**: Installs open-source drivers, enables AMD-specific tools
 
-### 5.1 Jujutsu Configuration
-Your jj setup should be complete via chezmoi:
-- Complex aliases and workflows
-- SSH signing with work/personal keys
-- Repository-specific configurations
+## Features
 
-```bash
-# Test jujutsu setup
-jj status
-jj config list
-```
+### Base Installation
+- UEFI boot mode with Limine bootloader
+- Btrfs filesystem with subvolumes
+- Snapper for automatic snapshots
+- Separate /home partition (~750GB)
+- Automatic GPU detection and driver installation
+- SSH enabled for remote access
+- Custom font installation (Dank Mono)
 
-### 5.2 Helix Editor
-Your Helix configuration includes:
-- BÉPO keybindings
-- Language servers for all your languages
-- Custom themes and snippets
+### Post-Installation
+- Modular package installation by category
+- Host-specific configurations
+- GPU-specific optimizations
+- Shell environment (Fish with plugins)
+- Display manager (SDDM) with Wayland
+- Development tools
+- Gaming support (Steam, Lutris, Wine)
+- Automatic daily updates via systemd
 
-```bash
-# Test Helix with language servers
-hx test.rs  # Should show Rust LSP working
-hx test.py  # Should show Python LSP working
-```
+## Customization
 
-### 5.3 Python Environment
-Scientific Python stack should be available:
-```bash
-# Test Python setup
-python -c "import numpy, matplotlib, pandas, astropy; print('Scientific stack ready')"
-```
+### Adding New Hosts
 
-## Phase 6: System Services
+1. Choose a hostname during installation
+2. Edit post-install scripts to add host-specific logic:
+   ```bash
+   if should_run_for_host "$HOSTNAME" "my-new-host"; then
+       # Custom configuration
+   fi
+   ```
 
-### 6.1 Backup System
-Your duplicacy backup should be configured:
-```bash
-# Check backup service
-systemctl --user status duplicacy-backup.timer
+### Adding New Packages
 
-# Test backup manually
-systemctl --user start duplicacy-backup.service
-```
+Add packages to the appropriate array in the post_install scripts:
+- Core packages: `post_install/packages_core.sh`
+- Desktop packages: `post_install/packages_desktop.sh`
+- Development packages: `post_install/packages_development.sh`
+- Gaming packages: `post_install/packages_gaming.sh`
 
-### 6.2 Auto-Updates
-Daily update timer is configured:
-```bash
-# Check update timer
-systemctl --user status daily-update.timer
+### Modifying GPU-Specific Behavior
 
-# View update logs
-journalctl --user -u daily-update.service
-```
+GPU-specific functions are in `lib/gpu_specific.sh`:
+- `configure_nvidia_system()` - Nvidia system configuration
+- `setup_nvidia_environment()` - Nvidia environment variables
+- `get_nvidia_kernel_params()` - Nvidia kernel parameters
+- `get_amd_kernel_params()` - AMD kernel parameters
 
-### 6.3 Snapper Snapshots
-```bash
-# List snapshots
-sudo snapper list
+## Script Functions
 
-# Create manual snapshot
-sudo snapper create --description "Migration complete"
+### Common Functions (`lib/common.sh`)
+- `print_status()`, `print_success()`, `print_warning()`, `print_error()` - Colored output
+- `should_run_for_host()` - Check if script should run for current hostname
+- `detect_gpu_type()` - Detect GPU manufacturer
 
-# Boot from snapshot (via Limine menu)
-```
+### Installation Process
 
-## Phase 7: Applications and Workflow
+1. **Disk Setup** (`lib/disk_setup.sh`)
+   - Partition disk (EFI, root, home)
+   - Format with Btrfs
+   - Create subvolumes
+   - Mount filesystem
 
-### 7.1 Communication Apps
-Your communication stack should auto-start:
-- **Discord/WebCord**: Workspace 1 (chat)
-- **Signal**: Workspace 1 (chat)
-- **Telegram**: Workspace 6 (work)
-- **Teams**: Workspace 6 (work)
-- **Thunderbird**: Workspace 1 (chat)
+2. **System Installation** (`lib/system_install.sh`)
+   - Install base packages
+   - Install GPU drivers
+   - Install custom fonts
 
-### 7.2 Development Workspace
-- **Browser (Zen)**: General browsing
-- **Code editors**: Helix primary, with full LSP support
-- **Terminals**: Multi-terminal setup with session management
+3. **System Configuration** (`lib/system_config.sh`)
+   - Configure locale, timezone, keyboard
+   - Create user
+   - Setup doas/sudo
+   - Configure SSH
 
-### 7.3 Productivity Apps
-- **Obsidian**: Workspace 7
-- **Spotify**: Workspace 9  
-- **LibreOffice**: Available
-- **GIMP**: Available
+4. **Bootloader** (`lib/bootloader.sh`)
+   - Install Limine
+   - Configure with GPU-specific parameters
 
-## Phase 8: Specialized Tools (Later)
+5. **Snapper** (`lib/snapper.sh`)
+   - Configure automatic snapshots
+   - Set retention policies
 
-### 8.1 Astronomy Applications (Can Wait)
-When ready for astronomy work:
-```bash
-# Install astronomy tools
-paru -S siril darktable stellarium
+## Requirements
 
-# Manual installations:
-# - GraXpert (download Linux binary)
-# - StarNet++ (download from website)
-# - Configure Wine for Sequator
-```
+- UEFI boot mode
+- 1TB+ disk recommended (250GB root + 750GB home)
+- Internet connection
+- Arch Linux live ISO
 
-### 8.2 Gaming Setup
-Gaming should work out of the box:
-- **Steam**: Configured with AMD optimizations
-- **Lutris**: For non-Steam games
-- **GameMode**: Automatic performance optimization
-- **MangoHud**: Performance overlay
+## Notes
 
-## Verification Checklist
-
-### ✅ Essential Functionality
-- [ ] Boot from Limine
-- [ ] Hyprland starts correctly
-- [ ] All monitors detected
-- [ ] BÉPO keyboard working
-- [ ] Audio (pipewire) working
-- [ ] Network/WiFi connected
-
-### ✅ Work Functionality  
-- [ ] VPN connects successfully
-- [ ] SSH keys working (personal + work)
-- [ ] Git signing operational
-- [ ] Jujutsu workflow functional
-- [ ] Development tools accessible
-
-### ✅ Desktop Environment
-- [ ] Waybar shows correctly on all monitors
-- [ ] Window rules working (apps go to correct workspaces)
-- [ ] Screenshots and screen recording work
-- [ ] Notifications (mako) working
-- [ ] All terminals launch correctly
-
-### ✅ Applications
-- [ ] Communication apps launch and auto-place
-- [ ] Browsers working (Zen primary)
-- [ ] Code editors fully functional
-- [ ] Backup system operational
-- [ ] Auto-updates configured
+- Default username: `vincent` (change in `arch_install_main.sh`)
+- Default timezone: `Europe/Paris`
+- Default locale: `fr_FR.UTF-8`
+- Default keyboard: French BÉPO
+- Secure Boot must be disabled
 
 ## Troubleshooting
 
-### Common Issues
+### Installation Fails
+- Check internet connection
+- Verify UEFI boot mode
+- Ensure Secure Boot is disabled
 
-**Hyprland won't start:**
-```bash
-# Check graphics drivers
-lspci -k | grep -A 2 -E "(VGA|3D)"
+### Post-Install Script Fails
+- Run as regular user, not root
+- Check that all lib files were copied
+- Verify hostname matches expected values
 
-# Check Hyprland logs
-journalctl --user -u hyprland
-```
+### GPU Issues
+- Nvidia: May need to disable Secure Boot
+- AMD: Should work out of the box
+- Check `lspci | grep -i vga` to verify GPU detection
 
-**SSH keys not working:**
-```bash
-# Check 1Password CLI connection
-op account list
+## License
 
-# Manually load SSH keys
-ssh-add ~/.ssh/vincent ~/.ssh/tyrex
-```
-
-**VPN connection fails:**
-```bash
-# Check VPN script configuration
-cat ~/.local/bin/vpn-connect
-
-# Test openconnect manually
-sudo openconnect --protocol=gp YOUR_VPN_SERVER
-```
-
-**Font not loading:**
-```bash
-# Verify font installation
-fc-list | grep -i "dank"
-
-# Rebuild font cache
-fc-cache -fv
-```
-
-### Getting Help
-
-1. **Arch Wiki**: Comprehensive documentation
-2. **Hyprland Wiki**: Desktop environment specifics  
-3. **Your NixOS config**: Reference for any missing functionality
-4. **Chezmoi docs**: For dotfiles template issues
-
-## Post-Migration Optimization
-
-### Performance Tuning
-```bash
-# Enable zram (if desired)
-sudo pacman -S zram-generator
-
-# Optimize SSD (already configured in install)
-sudo systemctl enable fstrim.timer
-```
-
-### Security Hardening
-```bash
-# Enable firewall
-sudo ufw enable
-
-# Review and secure SSH config
-hx ~/.ssh/config
-```
-
-### Backup Verification
-```bash
-# Test restore functionality
-# (Always test backups!)
-systemctl --user start duplicacy-prune.service
-```
-
-## Success Metrics
-
-Your migration is complete when:
-1. **Work productivity**: VPN, development, communication all functional
-2. **Desktop experience**: Matches or exceeds your NixOS setup
-3. **System reliability**: Snapshots, backups, updates all automated
-4. **Performance**: AMD graphics, gaming, audio all optimized
-5. **Workflow preservation**: All your custom keybinds and workflows intact
-
----
-
-## Summary
-
-This migration preserves all the sophisticated functionality of your NixOS setup while gaining:
-- **Faster package updates** (no compilation)
-- **Better gaming performance** (optimized packages)
-- **Simpler system maintenance** (standard Arch tools)
-- **Same level of customization** (via chezmoi + 1Password)
-
-The key insight is using **chezmoi + 1Password** to replace Home Manager's functionality while maintaining the same level of declarative configuration and secret management you had with NixOS.
+These scripts are provided as-is for personal use.
