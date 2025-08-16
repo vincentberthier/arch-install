@@ -15,6 +15,7 @@ hwclock --systohc
 
 # Configure locale
 echo "$LOCALE UTF-8" >> /etc/locale.gen
+echo "en_US.UTF-8" >> /etc/locale.gen
 locale-gen
 echo "LANG=$LOCALE" > /etc/locale.conf
 
@@ -41,6 +42,7 @@ systemctl enable fstrim.timer
 # Create user
 useradd -m -G wheel,audio,video,optical,storage -s /bin/fish $USERNAME
 echo "$USERNAME:$USERNAME" | chpasswd
+usermod -a -G plugdev $USERNAME
 
 # Install and configure doas as primary
 pacman -S --noconfirm opendoas
@@ -71,6 +73,8 @@ pacman -Sy
 
 # Configure keyboard for console/TTY
 echo "KEYMAP=fr-bepo" > /etc/vconsole.conf
+
+sh -c "$(curl -fsSL https://steevelefort.github.io/optimot-install/install.sh)"
 
 # Configure keyboard for X11/Wayland
 mkdir -p /etc/X11/xorg.conf.d
@@ -110,6 +114,11 @@ configure_openssh() {
 # Install and configure SSH server for remote debugging
 pacman -S --noconfirm openssh
 
+# Jail directory for SFTP
+mkdir -p /var/lib/jail
+useradd -G sshusers -s /usr/bin/nologin -d /var/lib/jail sftp_user
+echo "sftp_user:sftp_user" | chpasswd
+
 # Configure SSH
 mkdir -p /etc/ssh/sshd_config.d
 cat > /etc/ssh/sshd_config.d/install.conf << 'SSH_EOF'
@@ -121,7 +130,26 @@ X11Forwarding no
 PrintMotd no
 AcceptEnv LANG LC_*
 UsePAM yes
+
+Subsystem sftp /usr/lib/ssh/sftp-server
+
+Match group sshusers
+ AuthorizedKeysFile /etc/ssh/authorized_keys/%u .ssh/authorized_keys
+ ChrootDirectory %h
+ X11Forwarding no
+ AllowTcpForwarding no
+ PasswordAuthentication no
+ PermitEmptyPasswords no
+ ForceCommand internal-sftp
 SSH_EOF
+
+mkdir /etc/ssh/authorized_keys
+chown root:root /etc/ssh/authorized_keys
+chmod 755 /etc/ssh/authorized_keys
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEaVvdqcBRa6S4jORfKN7R98rHUptFeV6WgcO9rpQsIP vincent.berthier@tyrex-cyber.com" > /etc/ssh/authorized_keys/tyrex
+chmod 644 /etc/ssh/authorized_keys/tyrex
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPYmwsF4C6jAgqO43vPaNFRZVNvvL4Zoi+wKmYS2FlAJ vincent.berthier@posteo.org" > /etc/ssh/authorized_keys/vincent
+chmod 644 /etc/ssh/authorized_keys/vincent
 
 # Enable SSH service
 systemctl enable sshd

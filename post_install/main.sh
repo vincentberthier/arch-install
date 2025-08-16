@@ -57,6 +57,7 @@ main() {
     # Phase 4: Development packages
     if should_run_for_host "$HOSTNAME" "athena" "gaia" "hephaistos"; then
         install_development_packages
+        install_podman
     fi
     
     # Phase 5: Gaming packages (gaming hosts only)
@@ -67,6 +68,7 @@ main() {
     # Phase 6: User environment setup
     setup_shell_environment
     setup_systemd_services
+    setup_duplicacy
     
     # Phase 7: GPU-specific setup
     if [[ "$GPU_TYPE" == "nvidia" ]] && should_run_for_host "$HOSTNAME" "athena"; then

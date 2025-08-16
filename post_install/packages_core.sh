@@ -23,6 +23,8 @@ install_paru() {
     tar -xf paru.tar.zst
     doas mv paru /usr/local/bin/
     chmod +x /usr/local/bin/paru
+
+    paru -Sy --no-confirm wally-cli
         
     print_success "paru installed"
 }
@@ -36,6 +38,7 @@ install_core_packages() {
         "starship" "eza" "bat" "fd" "ripgrep" "sd" "dust" "duf" "btop" "zoxide" "fzf"
         "git" "lazygit" "difftastic" "meld" "git-delta"
         "tree" "unzip" "wget" "curl" "rsync" "fastfetch" "tldr"
+        "yazi"
         
         # Security and keys
         "keychain" "gnupg" "pass"

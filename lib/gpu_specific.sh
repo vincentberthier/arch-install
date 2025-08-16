@@ -9,6 +9,8 @@ echo "Configuring Nvidia drivers..."
 
 # Add Nvidia modules to mkinitcpio
 sed -i 's/MODULES=()/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf
+mkdir -p /etc/modprobe.d
+echo "options nvidia-drm modeset=1" | tee /etc/modprobe.d/nvidia-drm.conf
 
 # Regenerate initramfs
 mkinitcpio -P
@@ -36,6 +38,8 @@ GBM_BACKEND=nvidia-drm
 __GLX_VENDOR_LIBRARY_NAME=nvidia
 WLR_NO_HARDWARE_CURSORS=1
 NVIDIA_WAYLAND=1
+QT_QPA_PLATFORM=wayland
+GDK_BACKEND=wayland
 ENV_EOF
     
     print_success "Nvidia environment configured"

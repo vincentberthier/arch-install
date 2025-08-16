@@ -8,6 +8,7 @@ install_desktop_packages() {
         "xdg-desktop-portal" "xdg-desktop-portal-hyprland"
         "wl-clipboard" "grim" "slurp" "labwc"
         "qt5-graphicaleffects" "qt5-svg" "qt5-quickcontrols2"
+        "hyprcursor-dracula-kde-git" "bibata-cursor-theme-bin"
         
         # Plasma desktop (fallback)
         "plasma-meta" "kde-applications-meta"
