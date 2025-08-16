@@ -13,7 +13,7 @@ install_base_system() {
     local MICROCODE=""
     
     if [[ "$GPU_TYPE" == "nvidia" ]]; then
-        GPU_PACKAGES="nvidia nvidia-utils nvidia-settings"
+        GPU_PACKAGES="nvidia-dkms nvidia-utils nvidia-settings"
         LIB32_GPU_PACKAGES="lib32-nvidia-utils"
         MICROCODE="intel-ucode"
     else
@@ -32,7 +32,8 @@ install_base_system() {
         man-db man-pages \
         reflector cargo sddm \
         ttf-nerd-fonts-symbols-mono ttf-fira-code ttf-jetbrains-mono-nerd \
-        $GPU_PACKAGES
+        $GPU_PACKAGES \
+        libusb hidapi
 
     # Only keep linux-zen kernel
     arch-chroot /mnt /bin/bash << 'EOF'
@@ -60,6 +61,22 @@ MULTILIB_EOF
     if [[ -n "$LIB32_GPU_PACKAGES" ]]; then
         arch-chroot /mnt pacman -S --noconfirm $LIB32_GPU_PACKAGES
     fi
+
+    # Add udev rules for ZSA keyboards
+    tee /mnt/etc/udev/rules.d/50-zsa.rules << 'ZSA_EOF'
+# ZSA Moonlander
+SUBSYSTEM=="usb", ATTR{idVendor}=="3297", ATTR{idProduct}=="1969", MODE="0666"
+SUBSYSTEM=="usb", ATTR{idVendor}=="feed", ATTR{idProduct}=="1307", MODE="0666"
+
+# ZSA Planck EZ
+SUBSYSTEM=="usb", ATTR{idVendor}=="feed", ATTR{idProduct}=="6060", MODE="0666"
+
+# ZSA Ergodox EZ (for completeness)
+SUBSYSTEM=="usb", ATTR{idVendor}=="feed", ATTR{idProduct}=="1307", MODE="0666"
+ZSA_EOF
+
+    arch-chroot /mnt udevadm control --reload-rules
+    arch-chroot /mnt udevadm trigger
      
     print_success "Base system installed"
 }
