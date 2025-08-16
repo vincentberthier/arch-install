@@ -62,9 +62,6 @@ cat > /etc/sudoers.d/broken-software << SUDO_EOF
 SUDO_EOF
 chmod 440 /etc/sudoers.d/broken-software
 
-# Alias helix to hx
-ln -sf /usr/bin/helix /usr/local/bin/hx
-
 # Configure pacman
 sed -i 's/#Color/Color/' /etc/pacman.conf
 sed -i 's/#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
@@ -135,4 +132,149 @@ EOF
     echo -e "${GREEN}SSH will be available after reboot${NC}"
     echo "Connect with: ssh vincent@<ip-address>"
     echo -e "${YELLOW}Don't forget to set password: passwd${NC}"
+}
+
+configure_firewall() {
+    print_status "Configuring firewall with nftables"
+
+    arch-chroot /mnt /bin/bash << EOF
+pacman -Sy --noconfirm nftables
+
+# If iptables firewall is set up for some reason, disable it
+systemctl stop iptables.service 2>/dev/null || true
+systemctl disable iptables.service 2>/dev/null || true
+systemctl stop ip6tables.service 2>/dev/null || true
+systemctl disable ip6tables.service 2>/dev/null || true
+
+cat > /etc/nftables.conf << 'NFTABLES_EOF'
+#!/usr/bin/nft -f
+
+# Clear all prior state
+flush ruleset
+
+# Define variables for easier management
+define SSH_PORT = 22
+define HTTP_PORT = 80
+define HTTPS_PORT = 443
+define CUSTOM_TCP_PORTS = { 1234, 2222, 8080 }
+define DNS_PORT = 53
+
+# Steam ports for gaming and remote play
+define STEAM_CLIENT_PORTS = { 27000-27100 }      # Steam client traffic
+define STEAM_SERVER_PORTS = { 27015-27030 }      # Steam game servers
+define STEAM_REMOTE_PLAY_TCP = { 27036-27037 }   # Steam Remote Play TCP
+define STEAM_REMOTE_PLAY_UDP = { 27031-27036 }   # Steam Remote Play UDP
+define STEAM_STREAMING_TCP = { 27040 }           # Steam In-Home Streaming TCP
+define STEAM_STREAMING_UDP = { 27000-27100 }     # Steam In-Home Streaming UDP range
+define STEAM_DISCOVERY = { 27036 }               # Steam discovery
+define STEAM_BROADCAST_DISCOVERY = { 27036 }     # Steam broadcast discovery
+
+table inet filter {
+    chain input {
+        # Base chain with drop policy
+        type filter hook input priority 0; policy drop;
+
+        # Allow loopback traffic
+        iif lo accept
+
+        # Allow established and related connections
+        ct state established,related accept
+
+        # Allow ICMP/ICMPv6 (ping, etc.)
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # SSH access
+        tcp dport \$SSH_PORT ct state new accept
+
+        # HTTP and HTTPS
+        tcp dport { \$HTTP_PORT, \$HTTPS_PORT } ct state new accept
+
+        # Custom TCP ports
+        tcp dport \$CUSTOM_TCP_PORTS ct state new accept
+
+        # DNS
+        udp dport \$DNS_PORT accept
+
+        # Steam Client Traffic (UDP)
+        udp dport \$STEAM_CLIENT_PORTS accept
+
+        # Steam Game Servers (UDP)
+        udp dport \$STEAM_SERVER_PORTS accept
+
+        # Steam Remote Play (TCP)
+        tcp dport \$STEAM_REMOTE_PLAY_TCP ct state new accept
+
+        # Steam Remote Play (UDP)
+        udp dport \$STEAM_REMOTE_PLAY_UDP accept
+
+        # Steam In-Home Streaming (TCP)
+        tcp dport \$STEAM_STREAMING_TCP ct state new accept
+
+        # Steam In-Home Streaming (UDP)
+        udp dport \$STEAM_STREAMING_UDP accept
+
+        # Steam Discovery (UDP)
+        udp dport \$STEAM_DISCOVERY accept
+
+        # Additional Steam ports for Big Picture mode and controller support
+        tcp dport { 27014-27050 } ct state new accept
+        udp dport { 4380, 27000-27031, 27036 } accept
+
+        # Steam broadcasting and remote play discovery
+        udp dport 27036 accept
+
+        # Log dropped packets (optional - comment out if too verbose)
+        # limit rate 5/minute log prefix "nftables-dropped: "
+
+        # Drop everything else (implicit due to policy drop)
+    }
+
+    chain forward {
+        # Base chain with drop policy
+        type filter hook forward priority 0; policy drop;
+
+        # Allow forwarding for established and related connections
+        ct state established,related accept
+
+        # Add custom forwarding rules here if needed
+    }
+
+    chain output {
+        # Base chain with accept policy (allow all outgoing by default)
+        type filter hook output priority 0; policy accept;
+    }
+}
+
+# Optional: NAT table for masquerading (useful if this machine acts as a router)
+# Uncomment if needed
+# table ip nat {
+#     chain postrouting {
+#         type nat hook postrouting priority 100; policy accept;
+#         # masquerade private networks
+#         ip saddr 192.168.0.0/16 oifname != "lo" masquerade
+#         ip saddr 10.0.0.0/8 oifname != "lo" masquerade
+#         ip saddr 172.16.0.0/12 oifname != "lo" masquerade
+#     }
+# }
+NFTABLES_EOF
+
+# Set proper permissions
+chmod 644 /etc/nftables.conf
+
+systemctl enable nftables.service
+systemctl start nftables.service
+EOF
+
+    print_success "Firewall setup completed successfully!"
+    echo "Open ports:"
+    echo "  TCP: 22 (SSH), 80 (HTTP), 443 (HTTPS), 1234, 2222, 8080"
+    echo "  UDP: 53 (DNS)"
+    echo "  Steam ports: Various TCP/UDP ranges for gaming and remote play"
+    echo
+    echo -e "${YELLOW}Important notes:${NC}"
+    echo -e "${YELLOW}  - SSH is accessible on port 22. Ensure you have access before disconnecting!${NC}"
+    echo -e "${YELLOW}  - Configuration is saved in /etc/nftables.conf${NC}"
+    echo -e "${YELLOW}  - Service will start automatically on boot${NC}"
+    echo -e "${YELLOW}  - To modify rules, edit /etc/nftables.conf and run: systemctl reload nftables${NC}"
 }
