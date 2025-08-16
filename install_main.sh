@@ -182,6 +182,7 @@ main() {
     configure_system
     install_fonts
     configure_openssh
+    configure_firewall
     setup_snapper
     install_limine
     copy_post_install
