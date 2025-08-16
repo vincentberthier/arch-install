@@ -5,7 +5,6 @@ setup_directories() {
     print_status "Setting up user directories"
     
     # Create standard directories
-    mkdir -p ~/Documents ~/Downloads ~/Pictures ~/Videos ~/Music
     mkdir -p ~/code ~/pcloud ~/vault
     mkdir -p ~/.config ~/.local/bin ~/.local/share
     
@@ -181,4 +180,11 @@ EOF
     systemctl --user enable duplicacy-prune.timer
     systemctl --user start duplicacy-backup.timer
     systemctl --user start duplicacy-prune.timer
+}
+
+setup_virtualization() {
+    doas pacman -S qemu-full virt-manager libvirt ebtables dnsmasq bridge-utils
+    doas systemctl enable libvirtd
+    doas systemctl start libvirtd
+    doas usermod -a -G libvirt $USER
 }

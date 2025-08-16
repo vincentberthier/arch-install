@@ -89,3 +89,9 @@ setup_duplicacy_config() {
 ]}
 DUP_EOF
     done
+}
+
+install_astro_tools() {
+    doas pacman -S --no-confirm remmina stellarium darktable
+    paru -S --no-confirm graxpert-bin starnet2-bin siril-git
+}

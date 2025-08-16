@@ -68,12 +68,18 @@ main() {
     # Phase 6: User environment setup
     setup_shell_environment
     setup_systemd_services
+    setup_virtualization
     setup_duplicacy
     setup_duplicacy_config
     
     # Phase 7: GPU-specific setup
     if [[ "$GPU_TYPE" == "nvidia" ]] && should_run_for_host "$HOSTNAME" "athena"; then
         setup_nvidia_environment
+    fi
+
+    # Phase 8: install astro tools
+    if should_run_for_host "$HOSTNAME" "gaia"; then
+        install_astro_tools
     fi
     
     print_success "Package installation completed!"

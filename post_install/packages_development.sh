@@ -6,11 +6,23 @@ install_development_packages() {
         # VPN and work essentials
         "openconnect" "iproute2" "iptables"
         
-        # Development core
-        "rustup" "cargo" "rust-analyzer"
-        "clang" "lldb" "python" "python-pip"
-        "typescript-language-server" "jujutsu"
+          # Development core
+         "jujutsu" "openssl" "git" "gcovr" "tokei" "lcov" "gitlab-ci-local"
+         "taplo-cli" "marksman" "bacon" "graphviz" "gnuplot"
+         "perf" "kcachegrind" "hyperfine" "valgrind" "gdb"
+         "strace" "ltrace"
+
+        # Rust stuff
+        "rustup" "rust-analyzer" "llvm" "mingw-x64-gcc" "mingw-x64-headers"
         "musl" "rust-musl" "kernel-headers-musl"
+        "bacon" "cargo-binstall" "cargo-audit" "cargo-deny" "cargo-expand"
+        "cargo-llvm-cov" "cargo-machete" "cargo-nextest"
+        "cargo-outdated" "cargo-spellcheck" "tokio-console"
+        "cargo-flamegraph"
+
+        # C++ stuff
+        "clang" "lldb" "cmake" "make" "ninja" "zlib" "catch2" "doxygen" "bear" "conan" "vcpkg"
+        "cppcheck"
 
         # LaTeX
         "texlive-basic" "texlive-latex" "texlive-latexrecommended" "texlive-latexextra"
@@ -18,6 +30,7 @@ install_development_packages() {
         "texlive-science" "texlive-bibtexextra" "biber"        
 
         # Python scientific stack
+        "python" "python-pip"
         "python-numpy" "python-matplotlib" "python-pandas" "python-seaborn"
         "python-scikit-image" "python-opencv" "python-pillow" "python-requests"
         "ipython" "python-black" "python-isort" "python-flake8"
@@ -25,19 +38,8 @@ install_development_packages() {
         
         # Development tools
         "eslint" "prettier" "bash-language-server" "shfmt" "buf" "yaml-language-server"
-
-        # Rust tools
-        "bacon" "cargo-binstall" "cargo-audit" "tokio-console"
-        "cargo-deny" "cargo-expand" "cargo-flamegraph"
-        "cargo-llvm-cov" "cargo-machete" "cargo-nextest"
-        "cargo-outdated" "cargo-spellcheck"
-
-        # C++ development
-        "clang" "llvm" "lldb" "lld" "cmake" "make" "ninja"
-        "bear" "gdb" "valgrind" "gcovr"
-
-        # Utils
-        "cdrtools" "hyperfine" "lcov" "tokei"
+        "typescript-language-server" "cdrtools"
+(??)
     )
     
     print_status "Installing Development packages (${#packages[@]} packages)"
@@ -55,6 +57,10 @@ install_development_packages() {
     
     # Development AUR packages
     local aur_packages=(
+        "cargo-criterion"              # Rust benchmarks
+        "cargo-mutants"                # Mutation testing
+        "hotspot"                      # GUI for perf
+        "massif-visualizer-git"        # Visualizer for Valgrind files
         "ltex-ls-bin"                  # LS for LaTeX
         "duplicacy"                    # Backup tool
         "zellij"                       # Terminal multiplexer
@@ -79,7 +85,15 @@ install_development_packages() {
             print_warning "Failed to install $package, continuing..."
         fi
     done
+    
+    install_rust_packages
+    # Install Python packages via pip
+    install_python_packages
+    
+    print_success "Development packages installation completed"
+}
 
+install_rust_packages() {
     # Install rust components
     rustup toolchain install stable
     rustup component add rust-src clippy rustfmt rust-docs
@@ -98,6 +112,7 @@ install_rust_packages() {
     cargo binstall --no-confirm cargo-mutants
     cargo binstall --no-confirm cargo-pgo
     cargo binstall --no-confirm gitmoji-rs
+    cargo binstall --no-confirm starship-jj
 }
 
 install_python_packages() {
