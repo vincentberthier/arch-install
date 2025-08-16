@@ -69,6 +69,7 @@ main() {
     setup_shell_environment
     setup_systemd_services
     setup_duplicacy
+    setup_duplicacy_config
     
     # Phase 7: GPU-specific setup
     if [[ "$GPU_TYPE" == "nvidia" ]] && should_run_for_host "$HOSTNAME" "athena"; then
