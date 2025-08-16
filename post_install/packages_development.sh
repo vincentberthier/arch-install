@@ -4,13 +4,25 @@
 install_development_packages() {
     local packages=(
         # VPN and work essentials
-        "openconnect" "iproute2" "iptables"
+        "openconnect" "iproute2"
         
-        # Development core
-        "rustup" "cargo" "rust-analyzer"
-        "clang" "lldb" "python" "python-pip"
-        "typescript-language-server" "jujutsu"
+          # Development core
+         "jujutsu" "openssl" "git" "gcovr" "tokei" "lcov" 
+         "taplo-cli" "marksman" "bacon" "graphviz" "gnuplot"
+         "perf" "kcachegrind" "hyperfine" "valgrind" "gdb"
+         "strace" "ltrace"
+
+        # Rust stuff
+        "rustup" "rust-analyzer" "llvm" 
         "musl" "rust-musl" "kernel-headers-musl"
+        "bacon" "cargo-binstall" "cargo-audit" "cargo-deny" "cargo-expand"
+        "cargo-llvm-cov" "cargo-machete" "cargo-nextest"
+        "cargo-outdated" "cargo-spellcheck" "tokio-console"
+        "cargo-flamegraph"
+
+        # C++ stuff
+        "clang" "lldb" "cmake" "make" "ninja" "zlib" "catch2" "doxygen" "bear"  "vcpkg"
+        "cppcheck"
 
         # LaTeX
         "texlive-basic" "texlive-latex" "texlive-latexrecommended" "texlive-latexextra"
@@ -18,6 +30,7 @@ install_development_packages() {
         "texlive-science" "texlive-bibtexextra" "biber"        
 
         # Python scientific stack
+        "python" "python-pip"
         "python-numpy" "python-matplotlib" "python-pandas" "python-seaborn"
         "python-scikit-image" "python-opencv" "python-pillow" "python-requests"
         "ipython" "python-black" "python-isort" "python-flake8"
@@ -25,22 +38,12 @@ install_development_packages() {
         
         # Development tools
         "eslint" "prettier" "bash-language-server" "shfmt" "buf" "yaml-language-server"
-
-        # Rust tools
-        "bacon" "cargo-binstall" "cargo-audit" "tokio-console"
-        "cargo-deny" "cargo-expand" "cargo-flamegraph"
-        "cargo-llvm-cov" "cargo-machete" "cargo-nextest"
-        "cargo-outdated" "cargo-spellcheck"
-
-        # C++ development
-        "clang" "llvm" "lldb" "lld" "cmake" "make" "ninja"
-        "bear" "gdb" "valgrind" "gcovr"
-
-        # Utils
-        "cdrtools" "hyperfine" "lcov" "tokei"
+        "typescript-language-server" "cdrtools"
     )
     
     print_status "Installing Development packages (${#packages[@]} packages)"
+
+    doas pacman -R rust --noconfirm
     
     # Split into chunks
     local chunk_size=20
@@ -52,9 +55,15 @@ install_development_packages() {
             print_warning "Some packages in chunk failed to install, continuing..."
         fi
     done
+
+    install_rust_packages
     
     # Development AUR packages
     local aur_packages=(
+        "cargo-criterion"              # Rust benchmarks
+        "cargo-mutants"                # Mutation testing
+        "hotspot"                      # GUI for perf
+        "massif-visualizer-git"        # Visualizer for Valgrind files
         "ltex-ls-bin"                  # LS for LaTeX
         "duplicacy"                    # Backup tool
         "zellij"                       # Terminal multiplexer
@@ -71,6 +80,10 @@ install_development_packages() {
         "dockerfile-language-server"
         "nodejs-compose-language-service"
         "onedrivegui"
+        "conan"
+        "gitlab-ci-local"
+        "mingw-w64-gcc"
+        "mingw-w64-headers"
     )
     
     for package in "${aur_packages[@]}"; do
@@ -79,25 +92,27 @@ install_development_packages() {
             print_warning "Failed to install $package, continuing..."
         fi
     done
-
-    # Install rust components
-    rustup toolchain install stable
-    rustup component add rust-src clippy rustfmt rust-docs
-    rustup target add x86_64-unknown-linux-musl
     
     # Install Python packages via pip
     install_python_packages
-    # Install Rust packages with cargo
-    install_rust_packages
     
     print_success "Development packages installation completed"
 }
 
 install_rust_packages() {
+    # Install rust components
+    rustup default stable
+    rustup toolchain install stable
+    rustup component add rust-src clippy rustfmt rust-docs
+    rustup target add x86_64-unknown-linux-musl
+
+    export PATH="$HOME/.cargo/bin:$PATH"
+
     cargo binstall --no-confirm cargo-criterion
     cargo binstall --no-confirm cargo-mutants
     cargo binstall --no-confirm cargo-pgo
     cargo binstall --no-confirm gitmoji-rs
+    cargo binstall --no-confirm starship-jj
 }
 
 install_python_packages() {
@@ -124,7 +139,7 @@ install_python_packages() {
 install_podman() {
     print_status "Installing Podman"
 
-    pacman -Sy --no-confirm podman podman-compose podman-docker buildah skopeo fuse-overlayfs slirp4netns
+    doas pacman -Sy --noconfirm podman podman-compose podman-docker buildah skopeo fuse-overlayfs slirp4netns
     doas usermod --add-subuids 100000-165535 --add-subgids 100000-165535 $USER
     mkdir -p ~/.config/containers
 

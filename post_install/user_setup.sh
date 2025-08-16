@@ -3,6 +3,10 @@
 
 setup_shell_environment() {
     print_status "Setting up shell environment"
+    doas mkdir -p /var/lib/AccountsService/icons/
+    doas cp ./vincent.png -p "/var/lib/AccountsService/icons/$USER"
+    doas chown root:root "/var/lib/AccountsService/icons/$USER"
+    doas chmod 644 "/var/lib/AccountsService/icons/$USER"
     
     # Install Fisher
     install_fisher
@@ -55,7 +59,7 @@ FISH_SCRIPT_EOF
 }
 
 setup_duplicacy_config() {
-    local folders=("$HOME/code" "$HOME/Documents" "$HOME/Images" "$XDG_CONFIG_HOME")
+    local folders=("$HOME/code" "$HOME/Documents" "$HOME/Images" "$HOME/.config")
     for folder in "${folders[@]}"; do
         basename=$(basename "$folder")
         # Remove leading dot if present
@@ -67,7 +71,7 @@ setup_duplicacy_config() {
             basename="${basename}_$(hostname)"
         fi
         # Append /.duplicacy
-        duplicacy_path="${basename}/.duplicacy"
+        duplicacy_path="${folder}/.duplicacy"
 
         mkdir -p "$duplicacy_path"
         cat > "${duplicacy_path}/preferences" << DUP_EOF
@@ -89,3 +93,9 @@ setup_duplicacy_config() {
 ]}
 DUP_EOF
     done
+}
+
+install_astro_tools() {
+    doas pacman -S --noconfirm remmina stellarium darktable
+    paru -S --noconfirm graxpert-bin starnet2-bin siril-git
+}

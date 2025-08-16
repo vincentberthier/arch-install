@@ -69,7 +69,7 @@ cp /usr/share/limine/limine-bios.sys /boot/
 
 LIMINE_EOF
 
-doas sed -i 's/LIMIT_USAGE_PERCENT=.*/LIMIT_USAGE_PERCENT=99/' /etc/limine-snapper-sync.conf
+echo "LIMIT_USAGE_PERCENT=99" > /mnt/etc/limine-snapper-sync.conf
 
     print_success "Limine installed"
 }

@@ -5,7 +5,6 @@ setup_directories() {
     print_status "Setting up user directories"
     
     # Create standard directories
-    mkdir -p ~/Documents ~/Downloads ~/Pictures ~/Videos ~/Music
     mkdir -p ~/code ~/pcloud ~/vault
     mkdir -p ~/.config ~/.local/bin ~/.local/share
     
@@ -59,7 +58,7 @@ EOF
     systemctl --user enable daily-update.timer
 
     # Automount
-    doas pacman -S --no-confirm udisks2 udiskie
+    doas pacman -S --noconfirm udisks2 udiskie
     doas systemctl enable --now udisks2.service
     doas usermod -a -G storage,disk $USER
 
@@ -107,7 +106,7 @@ EOF
 
 setup_duplicacy() {
     if ! command -v duplicacy &> /dev/null; then
-        paru -S --no-confirm duplicacy
+        paru -S --noconfirm duplicacy
     fi
 
     SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
@@ -181,4 +180,11 @@ EOF
     systemctl --user enable duplicacy-prune.timer
     systemctl --user start duplicacy-backup.timer
     systemctl --user start duplicacy-prune.timer
+}
+
+setup_virtualization() {
+    doas pacman -S --noconfirm qemu-full virt-manager libvirt dnsmasq bridge-utils
+    doas systemctl enable libvirtd
+    doas systemctl start libvirtd
+    doas usermod -a -G libvirt $USER
 }

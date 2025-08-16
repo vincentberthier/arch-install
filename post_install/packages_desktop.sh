@@ -8,7 +8,6 @@ install_desktop_packages() {
         "xdg-desktop-portal" "xdg-desktop-portal-hyprland"
         "wl-clipboard" "grim" "slurp" "labwc"
         "qt5-graphicaleffects" "qt5-svg" "qt5-quickcontrols2"
-        "hyprcursor-dracula-kde-git" "bibata-cursor-theme-bin"
         
         # Plasma desktop (fallback)
         "plasma-meta" "kde-applications-meta"
@@ -42,6 +41,9 @@ install_desktop_packages() {
         "limine-snapper-sync"         # boot on snapshots
         "limine-entry-tool"           # limine sync helpers
         "wleave-git"                  # logout utils
+        "hyprcursor-dracula-kde-git"
+        "bibata-cursor-theme-bin"
+
     )
     
     for package in "${aur_packages[@]}"; do

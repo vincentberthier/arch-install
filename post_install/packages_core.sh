@@ -24,7 +24,7 @@ install_paru() {
     doas mv paru /usr/local/bin/
     chmod +x /usr/local/bin/paru
 
-    paru -Sy --no-confirm wally-cli
+    paru -Sy --noconfirm zsa-wally-cli
         
     print_success "paru installed"
 }
