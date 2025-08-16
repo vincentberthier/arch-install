@@ -39,6 +39,7 @@ mkdir -p /boot/EFI/BOOT
 cat > /boot/limine.conf << 'LIMINE_CONFIG_EOF'
 timeout: 2
 graphics: yes
+wallpaper: boot:///limine/wallpaper.png
 default_entry: 2
 
 /+Arch Linux
@@ -69,6 +70,7 @@ cp /usr/share/limine/limine-bios.sys /boot/
 
 LIMINE_EOF
 
+cp arch_wallpaper.png /mnt/boot/limine/wallpaper.png
 echo "LIMIT_USAGE_PERCENT=99" > /mnt/etc/limine-snapper-sync.conf
 
     print_success "Limine installed"

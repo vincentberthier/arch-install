@@ -84,6 +84,7 @@ install_development_packages() {
         "gitlab-ci-local"
         "mingw-w64-gcc"
         "mingw-w64-headers"
+        "bindfs"
     )
     
     for package in "${aur_packages[@]}"; do
@@ -92,6 +93,8 @@ install_development_packages() {
             print_warning "Failed to install $package, continuing..."
         fi
     done
+
+    doas sed -i "s/#user_allow_other/user_allow_other/" /etc/fuse.conf
     
     # Install Python packages via pip
     install_python_packages
