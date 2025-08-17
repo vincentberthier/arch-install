@@ -106,7 +106,7 @@ EOF
 
 setup_duplicacy() {
     if ! command -v duplicacy &> /dev/null; then
-        paru -S --noconfirm duplicacy
+        paru -S --noconfirm duplicacy rclone
     fi
 
     SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
@@ -122,7 +122,7 @@ Description=Duplicacy backups
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"; export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"; /bin/bash "$XDG_CONFIG_HOME/duplicacy/backup.sh" duplicacy date'
+ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"; export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"; /bin/bash "$XDG_CONFIG_HOME/duplicacy/backup.sh"
 
 [Install]
 WantedBy=default.target
@@ -135,7 +135,7 @@ Description=Duplicacy prune all backups
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"; /bin/bash "$XDG_CONFIG_HOME/duplicacy/prune.sh" duplicacy'
+ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"; export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"; /bin/bash "$XDG_CONFIG_HOME/duplicacy/prune.sh"'
 
 [Install]
 WantedBy=default.target

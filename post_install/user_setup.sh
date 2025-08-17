@@ -80,7 +80,7 @@ setup_duplicacy_config() {
         "name": "default",
         "id": "${basename}",
         "repository": "",
-        "storage": $HOME/vault",
+        "storage": "$HOME/vault",
         "encrypted": true,
         "no_backup": false,
         "no_restore": false,
@@ -90,7 +90,7 @@ setup_duplicacy_config() {
         "filters": "${HOME}/.config/duplicacy/filters.txt",
         "exclude_by_attribute": false
     }
-]}
+]
 DUP_EOF
     done
 }
