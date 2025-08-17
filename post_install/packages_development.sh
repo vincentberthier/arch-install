@@ -18,7 +18,7 @@ install_development_packages() {
         "bacon" "cargo-binstall" "cargo-audit" "cargo-deny" "cargo-expand"
         "cargo-llvm-cov" "cargo-machete" "cargo-nextest"
         "cargo-outdated" "cargo-spellcheck" "tokio-console"
-        "cargo-flamegraph"
+        "cargo-flamegraph" "aarch64-linux-gnu-gcc" "riscv64-linux-gnu-gcc"
 
         # C++ stuff
         "clang" "lldb" "cmake" "make" "ninja" "zlib" "catch2" "doxygen" "bear"  "vcpkg"
@@ -38,12 +38,12 @@ install_development_packages() {
         
         # Development tools
         "eslint" "prettier" "bash-language-server" "shfmt" "buf" "yaml-language-server"
-        "typescript-language-server" "cdrtools"
+        "typescript-language-server" "cdrtools" "heaptrack"
     )
     
     print_status "Installing Development packages (${#packages[@]} packages)"
 
-    doas pacman -R rust --noconfirm
+    doas pacman -R rust cargo --noconfirm
     
     # Split into chunks
     local chunk_size=20
@@ -104,10 +104,12 @@ install_development_packages() {
 
 install_rust_packages() {
     # Install rust components
-    rustup default stable
     rustup toolchain install stable
+    rustup default stable
     rustup component add rust-src clippy rustfmt rust-docs
     rustup target add x86_64-unknown-linux-musl
+    rustup target add aarch64-unknown-linux-gnu
+    rustup target add riscv64gc-unknown-linux-gnu
 
     export PATH="$HOME/.cargo/bin:$PATH"
 

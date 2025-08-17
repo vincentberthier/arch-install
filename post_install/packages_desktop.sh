@@ -15,8 +15,8 @@ install_desktop_packages() {
         
         # Applications
         "thunderbird" "discord" "signal-desktop" "telegram-desktop" "element-desktop"
-        "libreoffice-fresh" "obsidian" "qbittorrent"
-        "mpv" "vlc" "gimp"
+        "libreoffice-fresh" "obsidian" "qbittorrent" "gwenview" "zathura" "okular"
+        "mpv" "vlc" "gimp" "gimp-plugin-gmic" "gimp-plugin-resynthesizer"
     )
     
     print_status "Installing Desktop packages (${#packages[@]} packages)"
