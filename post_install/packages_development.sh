@@ -43,7 +43,8 @@ install_development_packages() {
     
     print_status "Installing Development packages (${#packages[@]} packages)"
 
-    doas pacman -R rust cargo --noconfirm
+    doas pacman -R cargo --noconfirm > /dev/null 2>&1  || true
+    doas pacman -R rust --noconfirm > /dev/null 2>&1 || true
     
     # Split into chunks
     local chunk_size=20

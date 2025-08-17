@@ -15,8 +15,8 @@ install_desktop_packages() {
         
         # Applications
         "thunderbird" "discord" "signal-desktop" "telegram-desktop" "element-desktop"
-        "libreoffice-fresh" "obsidian" "qbittorrent" "gwenview" "zathura" "okular"
-        "mpv" "vlc" "gimp" "gimp-plugin-gmic" "gimp-plugin-resynthesizer"
+        "libreoffice-fresh" "obsidian" "qbittorrent" "gwenview" "zathura" "okular"
+        "mpv" "vlc" "gimp" "gimp-plugin-gmic"
     )
     
     print_status "Installing Desktop packages (${#packages[@]} packages)"
@@ -43,6 +43,7 @@ install_desktop_packages() {
         "wleave-git"                  # logout utils
         "hyprcursor-dracula-kde-git"
         "bibata-cursor-theme-bin"
+        "gimp-plugin-resynthesizer"
 
     )
     
@@ -58,6 +59,10 @@ install_desktop_packages() {
     
     # Install problematic AUR packages with PGP issues
     install_pgp_messed_up_packages
+
+    # Add zen-browser to 1password integrations
+    doas mkdir /etc/1password
+    echo "zen-bin" | doas tee -a /etc/1password/custom_allowed_browsers
     
     print_success "Desktop packages installation completed"
 }
