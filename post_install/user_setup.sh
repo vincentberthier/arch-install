@@ -96,6 +96,6 @@ DUP_EOF
 }
 
 install_astro_tools() {
-    doas pacman -S --noconfirm remmina stellarium darktable
+    doas pacman -S --noconfirm remmina stellarium darktable tk
     paru -S --noconfirm graxpert-bin starnet2-bin siril-git
 }
