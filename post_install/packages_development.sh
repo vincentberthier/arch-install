@@ -7,7 +7,7 @@ install_development_packages() {
         "openconnect" "iproute2"
         
           # Development core
-         "jujutsu" "openssl" "git" "gcovr" "tokei" "lcov" 
+         "jujutsu" "openssl" "git" "gcovr" "grcov" "tokei" "lcov" 
          "taplo-cli" "marksman" "bacon" "graphviz" "gnuplot"
          "perf" "kcachegrind" "hyperfine" "valgrind" "gdb"
          "strace" "ltrace"
