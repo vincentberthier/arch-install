@@ -107,7 +107,7 @@ install_rust_packages() {
     # Install rust components
     rustup toolchain install stable
     rustup default stable
-    rustup component add rust-src clippy rustfmt rust-docs
+    rustup component add rust-src clippy rustfmt rust-docs llvm-tools
     rustup target add x86_64-unknown-linux-musl
     rustup target add aarch64-unknown-linux-gnu
     rustup target add riscv64gc-unknown-linux-gnu
