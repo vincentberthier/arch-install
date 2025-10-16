@@ -8,6 +8,7 @@ install_desktop_packages() {
         "xdg-desktop-portal" "xdg-desktop-portal-hyprland"
         "wl-clipboard" "grim" "slurp" "labwc"
         "qt5-graphicaleffects" "qt5-svg" "qt5-quickcontrols2"
+        "thunar" "thunar-volman" "gvfs" "gvfs-mtp" "gvfs-smb"
         
         # Plasma desktop (fallback)
         "plasma-meta" "kde-applications-meta"
