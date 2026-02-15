@@ -2,28 +2,28 @@
 # System setup functions
 
 setup_directories() {
-    print_status "Setting up user directories"
-    
-    # Create standard directories
-    mkdir -p ~/code ~/pcloud ~/vault
-    mkdir -p ~/.config ~/.local/bin ~/.local/share
-    
-    print_success "Directories created"
+	print_status "Setting up user directories"
+
+	# Create standard directories
+	mkdir -p ~/code ~/pcloud ~/vault
+	mkdir -p ~/.config ~/.local/bin ~/.local/share
+
+	print_success "Directories created"
 }
 
 setup_systemd_services() {
-    print_status "Setting up systemd user services"
-    
-    # Enable user services
-    systemctl --user enable pipewire
-    systemctl --user enable pipewire-pulse
-    systemctl --user enable wireplumber
-    
-    # Create update timer
-    mkdir -p ~/.config/systemd/user
-    
-    # Daily update service
-    cat > ~/.config/systemd/user/daily-update.service << 'EOF'
+	print_status "Setting up systemd user services"
+
+	# Enable user services
+	systemctl --user enable pipewire
+	systemctl --user enable pipewire-pulse
+	systemctl --user enable wireplumber
+
+	# Create update timer
+	mkdir -p ~/.config/systemd/user
+
+	# Daily update service
+	cat >~/.config/systemd/user/daily-update.service <<'EOF'
 [Unit]
 Description=Daily system update
 Wants=network-online.target
@@ -38,8 +38,8 @@ ExecStart=/usr/bin/flatpak update -y
 WantedBy=default.target
 EOF
 
-    # Daily update timer (5 minutes after boot, then daily)
-    cat > ~/.config/systemd/user/daily-update.timer << 'EOF'
+	# Daily update timer (5 minutes after boot, then daily)
+	cat >~/.config/systemd/user/daily-update.timer <<'EOF'
 [Unit]
 Description=Daily system update timer
 Requires=daily-update.service
@@ -53,17 +53,17 @@ Persistent=true
 WantedBy=timers.target
 EOF
 
-    # Enable the timer
-    systemctl --user daemon-reload
-    systemctl --user enable daily-update.timer
+	# Enable the timer
+	systemctl --user daemon-reload
+	systemctl --user enable daily-update.timer
 
-    # Automount
-    doas pacman -S --noconfirm udisks2 udiskie
-    doas systemctl enable --now udisks2.service
-    doas usermod -a -G storage,disk $USER
+	# Automount
+	doas pacman -S --noconfirm udisks2 udiskie
+	doas systemctl enable --now udisks2.service
+	doas usermod -a -G storage,disk "$USER"
 
-    mkdir -p ~/.config/autostart
-cat > ~/.config/autostart/udiskie.desktop << EOF
+	mkdir -p ~/.config/autostart
+	cat >~/.config/autostart/udiskie.desktop <<EOF
 [Desktop Entry]
 Type=Application
 Name=udiskie
@@ -73,7 +73,7 @@ NoDisplay=false
 X-GNOME-Autostart-enabled=true
 EOF
 
-    doas tee /etc/polkit-1/rules.d/50-udisks.rules << 'EOF'
+	doas tee /etc/polkit-1/rules.d/50-udisks.rules <<'EOF'
 polkit.addRule(function(action, subject) {
     var YES = polkit.Result.YES;
     var permission = {
@@ -99,24 +99,24 @@ polkit.addRule(function(action, subject) {
     }
 });
 EOF
-    doas systemctl restart polkit
-    
-    print_success "Systemd services configured"
+	doas systemctl restart polkit
+
+	print_success "Systemd services configured"
 }
 
 setup_duplicacy() {
-    if ! command -v duplicacy &> /dev/null; then
-        paru -S --noconfirm duplicacy rclone
-    fi
+	if ! command -v duplicacy &>/dev/null; then
+		paru -S --noconfirm duplicacy rclone
+	fi
 
-    SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
-    mkdir -p "$SYSTEMD_USER_DIR"
+	SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+	mkdir -p "$SYSTEMD_USER_DIR"
 
-    XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-    XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+	XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+	XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
 
-    echo -e "${YELLOW}Creating systemd service files...${NC}"
-    cat > "$SYSTEMD_USER_DIR/duplicacy-backup.service" << 'EOF'
+	print_status "Creating systemd service files"
+	cat >"$SYSTEMD_USER_DIR/duplicacy-backup.service" <<'EOF'
 [Unit]
 Description=Duplicacy backups
 
@@ -128,8 +128,8 @@ ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOM
 WantedBy=default.target
 EOF
 
-    # Create duplicacy-prune.service
-    cat > "$SYSTEMD_USER_DIR/duplicacy-prune.service" << 'EOF'
+	# Create duplicacy-prune.service
+	cat >"$SYSTEMD_USER_DIR/duplicacy-prune.service" <<'EOF'
 [Unit]
 Description=Duplicacy prune all backups
 
@@ -141,8 +141,8 @@ ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOM
 WantedBy=default.target
 EOF
 
-    # Create duplicacy-backup.timer
-    cat > "$SYSTEMD_USER_DIR/duplicacy-backup.timer" << 'EOF'
+	# Create duplicacy-backup.timer
+	cat >"$SYSTEMD_USER_DIR/duplicacy-backup.timer" <<'EOF'
 [Unit]
 Description=Timer for duplicacy backups
 
@@ -155,8 +155,8 @@ OnUnitActiveSec=60m
 WantedBy=timers.target
 EOF
 
-    # Create duplicacy-prune.timer
-    cat > "$SYSTEMD_USER_DIR/duplicacy-prune.timer" << 'EOF'
+	# Create duplicacy-prune.timer
+	cat >"$SYSTEMD_USER_DIR/duplicacy-prune.timer" <<'EOF'
 [Unit]
 Description=Timer for duplicacy pruning
 
@@ -168,23 +168,23 @@ OnBootSec=120m
 WantedBy=timers.target
 EOF
 
-    systemctl --user daemon-reload
-    echo -e "${YELLOW}Enabling and starting services...${NC}"
+	systemctl --user daemon-reload
+	print_status "Enabling and starting services"
 
-    # Enable the services
-    systemctl --user enable duplicacy-backup.service
-    systemctl --user enable duplicacy-prune.service
+	# Enable the services
+	systemctl --user enable duplicacy-backup.service
+	systemctl --user enable duplicacy-prune.service
 
-    # Enable and start the timers
-    systemctl --user enable duplicacy-backup.timer
-    systemctl --user enable duplicacy-prune.timer
-    systemctl --user start duplicacy-backup.timer
-    systemctl --user start duplicacy-prune.timer
+	# Enable and start the timers
+	systemctl --user enable duplicacy-backup.timer
+	systemctl --user enable duplicacy-prune.timer
+	systemctl --user start duplicacy-backup.timer
+	systemctl --user start duplicacy-prune.timer
 }
 
 setup_virtualization() {
-    doas pacman -S --noconfirm qemu-full virt-manager libvirt dnsmasq bridge-utils
-    doas systemctl enable libvirtd
-    doas systemctl start libvirtd
-    doas usermod -a -G libvirt $USER
+	doas pacman -S --noconfirm qemu-full virt-manager libvirt dnsmasq bridge-utils swtpm
+	doas systemctl enable libvirtd
+	doas systemctl start libvirtd
+	doas usermod -a -G libvirt "$USER"
 }

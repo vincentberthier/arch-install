@@ -1,208 +1,113 @@
 # Arch Linux Installation Scripts
 
-Modular Arch Linux installation scripts with Btrfs, Snapper, and Limine bootloader.
+Modular Bash scripts that automate a full Arch Linux install and post-install
+setup. Personal configuration, not a general-purpose framework.
+
+## Highlights
+
+| Component        | Choice                                              |
+|------------------|-----------------------------------------------------|
+| Filesystem       | Btrfs with subvolumes (`@`, `@var_log`, etc.)       |
+| Snapshots        | Snapper with automatic timeline + numbered retention |
+| Bootloader       | Limine (synced with snapper via limine-snapper-sync) |
+| Kernel           | linux-zen                                           |
+| Compositor       | Niri (scrollable tiling) + Noctalia shell           |
+| Desktop fallback | KDE Plasma                                          |
+| Display manager  | SDDM (Wayland via labwc greeter)                    |
+| Shell            | Fish (with Fisher plugin manager)                   |
+| Dotfiles         | chezmoi                                             |
+| Privilege        | doas (sudo only for snapper/pacman wrappers)        |
+| Firewall         | nftables (drop policy, Steam ports open)            |
+| GPU              | Auto-detected: Nvidia (proprietary) or AMD (mesa)   |
+| AUR helpers      | paru (primary), yay (fallback)                      |
+| Backup           | Duplicacy to local vault with systemd timers        |
+
+## Hosts
+
+| Hostname     | Desktop | Development | Gaming | Embedded | Astro |
+|--------------|---------|-------------|--------|----------|-------|
+| `athena`     | yes     | yes         | yes    | no       | no    |
+| `gaia`       | yes     | yes         | yes    | yes      | yes   |
+| `hephaistos` | yes     | yes         | no     | no       | no    |
+
+## Installation
+
+### Phase 1: Base install (live ISO, as root)
+
+```bash
+# Boot the Arch Linux live ISO, then:
+git clone https://github.com/vincentberthier/arch-install.git
+cd arch-install
+chmod +x install_main.sh
+./install_main.sh
+```
+
+The script prompts for hostname, target disk, and (if a font zip is present)
+the font archive password. It then partitions, formats, pacstraps, configures,
+and installs the bootloader. Reboot when done.
+
+### Phase 2: Post-install (installed system, as user)
+
+```bash
+cd ~/post_install
+./main.sh
+```
+
+Installs packages by category, sets up systemd services, configures the shell
+environment, and prints remaining manual steps (1Password, chezmoi, fonts).
+
+### Phase 3: After chezmoi
+
+```bash
+chezmoi init https://github.com/vincentberthier/dotfiles.git
+chezmoi apply
+# Run twice if needed (some templates depend on first-pass files)
+chezmoi apply
+
+# Install custom fonts (requires SSH keys from chezmoi)
+~/post_install/install_fonts.sh
+```
 
 ## Directory Structure
 
 ```
 .
-├── arch_install_main.sh        # Main installation script
-├── lib/                        # Shared library functions
-│   ├── common.sh               # Common functions and utilities
-│   ├── disk_setup.sh           # Disk partitioning and formatting
-│   ├── system_install.sh       # Base system installation
-│   ├── system_config.sh        # System configuration
-│   ├── gpu_specific.sh         # GPU-specific configurations
-│   ├── bootloader.sh           # Bootloader installation
-│   └── snapper.sh              # Snapper configuration
-└── post_install/               # Post-installation scripts
-    ├── main.sh                 # Post-install orchestrator
-    ├── packages_core.sh        # Core packages
-    ├── packages_desktop.sh     # Desktop environment packages
-    ├── packages_development.sh # Development tools
-    ├── packages_gaming.sh      # Gaming packages
-    ├── system_setup.sh         # System configuration
-    ├── user_setup.sh           # User environment setup
-    └── lib/                    # Copy of lib for post-install
-        ├── common.sh
-        └── gpu_specific.sh
+├── install_main.sh              # Phase 1 orchestrator (live ISO, root)
+├── lib/
+│   ├── common.sh                # Logging, host checks, GPU detection
+│   ├── disk_setup.sh            # GPT partitioning, btrfs, subvolumes
+│   ├── system_install.sh        # pacstrap, GPU drivers, fonts
+│   ├── system_config.sh         # Locale, user, doas, SSH, firewall
+│   ├── bootloader.sh            # Limine install and config
+│   ├── snapper.sh               # Snapper snapshot config
+│   └── gpu_specific.sh          # Nvidia/AMD kernel params and env
+├── post_install/
+│   ├── main.sh                  # Phase 2 orchestrator (user)
+│   ├── packages_core.sh         # CLI tools, audio, terminals
+│   ├── packages_desktop.sh      # Niri, KDE, apps, SDDM
+│   ├── packages_development.sh  # Rust, C++, Python, LaTeX, LSPs
+│   ├── packages_gaming.sh       # Steam, Lutris, Wine, MangoHUD
+│   ├── system_setup.sh          # Directories, systemd, duplicacy, VMs
+│   ├── user_setup.sh            # Fish plugins, duplicacy config, astro
+│   ├── install_fonts.sh         # Post-chezmoi font installer
+│   └── vincent.png              # User avatar
+└── arch_wallpaper.png           # Limine boot wallpaper
 ```
 
-## Usage
+Library files define functions only -- the orchestrators source them and call
+functions in order.
 
-### Base Installation
+## Prerequisites
 
-1. Boot into Arch Linux live ISO
-2. Place all scripts in the same directory structure
-3. Make the main script executable:
-   ```bash
-   chmod +x arch_install_main.sh
-   ```
-4. Run the installation:
-   ```bash
-   ./arch_install_main.sh
-   ```
-
-### Post-Installation
-
-After rebooting into the new system:
-
-1. Log in as your user
-2. Navigate to the post_install directory:
-   ```bash
-   cd ~/post_install
-   ```
-3. Run the post-installation script:
-   ```bash
-   ./main.sh
-   ```
-
-## Host-Specific Configuration
-
-The scripts support hostname-based configuration. You can control which packages and features are installed on specific hosts using the `should_run_for_host` function.
-
-### Example Hostnames
-
-Configure your system with one of these hostnames to get specific setups:
-
-- `workstation` - Full desktop with development and gaming
-- `laptop` - Desktop and development, no gaming
-- `desktop` - Desktop and gaming, limited development
-- `server` - Core packages only, no desktop
-
-### Customizing for Your Hosts
-
-Edit `post_install/main.sh` to customize which features are installed on which hosts:
-
-```bash
-# Example: only install on specific hosts
-if should_run_for_host "$HOSTNAME" "workstation" "laptop"; then
-    install_development_packages
-fi
-```
-
-## GPU Detection
-
-The scripts automatically detect GPU type (Nvidia or AMD) and install appropriate drivers and configurations:
-
-- **Nvidia**: Installs proprietary drivers, configures Wayland support
-- **AMD**: Installs open-source drivers, enables AMD-specific tools
-
-## Features
-
-### Base Installation
-- UEFI boot mode with Limine bootloader
-- Btrfs filesystem with subvolumes
-- Snapper for automatic snapshots
-- Separate /home partition (~750GB)
-- Automatic GPU detection and driver installation
-- SSH enabled for remote access
-- Custom font installation (Dank Mono)
-
-### Post-Installation
-- Modular package installation by category
-- Host-specific configurations
-- GPU-specific optimizations
-- Shell environment (Fish with plugins)
-- Display manager (SDDM) with Wayland
-- Development tools
-- Gaming support (Steam, Lutris, Wine)
-- Automatic daily updates via systemd
-
-## Customization
-
-### Adding New Hosts
-
-1. Choose a hostname during installation
-2. Edit post-install scripts to add host-specific logic:
-   ```bash
-   if should_run_for_host "$HOSTNAME" "my-new-host"; then
-       # Custom configuration
-   fi
-   ```
-
-### Adding New Packages
-
-Add packages to the appropriate array in the post_install scripts:
-- Core packages: `post_install/packages_core.sh`
-- Desktop packages: `post_install/packages_desktop.sh`
-- Development packages: `post_install/packages_development.sh`
-- Gaming packages: `post_install/packages_gaming.sh`
-
-### Modifying GPU-Specific Behavior
-
-GPU-specific functions are in `lib/gpu_specific.sh`:
-- `configure_nvidia_system()` - Nvidia system configuration
-- `setup_nvidia_environment()` - Nvidia environment variables
-- `get_nvidia_kernel_params()` - Nvidia kernel parameters
-- `get_amd_kernel_params()` - AMD kernel parameters
-
-## Script Functions
-
-### Common Functions (`lib/common.sh`)
-- `print_status()`, `print_success()`, `print_warning()`, `print_error()` - Colored output
-- `should_run_for_host()` - Check if script should run for current hostname
-- `detect_gpu_type()` - Detect GPU manufacturer
-
-### Installation Process
-
-1. **Disk Setup** (`lib/disk_setup.sh`)
-   - Partition disk (EFI, root, home)
-   - Format with Btrfs
-   - Create subvolumes
-   - Mount filesystem
-
-2. **System Installation** (`lib/system_install.sh`)
-   - Install base packages
-   - Install GPU drivers
-   - Install custom fonts
-
-3. **System Configuration** (`lib/system_config.sh`)
-   - Configure locale, timezone, keyboard
-   - Create user
-   - Setup doas/sudo
-   - Configure SSH
-
-4. **Bootloader** (`lib/bootloader.sh`)
-   - Install Limine
-   - Configure with GPU-specific parameters
-
-5. **Snapper** (`lib/snapper.sh`)
-   - Configure automatic snapshots
-   - Set retention policies
-
-## Requirements
-
-- UEFI boot mode
-- 1TB+ disk recommended (250GB root + 750GB home)
+- UEFI boot mode (Secure Boot disabled)
 - Internet connection
-- Arch Linux live ISO
+- 1 TB+ disk recommended (2 GB boot, 250 GB root, remainder home)
 
-## Notes
+## Defaults
 
-- Default username: `vincent` (change in `arch_install_main.sh`)
-- Default timezone: `Europe/Paris`
-- Default locale: `fr_FR.UTF-8`
-- Default keyboard: French BÉPO
-- Secure Boot must be disabled
-
-## Troubleshooting
-
-### Installation Fails
-- Check internet connection
-- Verify UEFI boot mode
-- Ensure Secure Boot is disabled
-
-### Post-Install Script Fails
-- Run as regular user, not root
-- Check that all lib files were copied
-- Verify hostname matches expected values
-
-### GPU Issues
-- Nvidia: May need to disable Secure Boot
-- AMD: Should work out of the box
-- Check `lspci | grep -i vga` to verify GPU detection
-
-## License
-
-These scripts are provided as-is for personal use.
+| Setting  | Value            |
+|----------|------------------|
+| User     | `vincent`        |
+| Timezone | `Europe/Paris`   |
+| Locale   | `fr_FR.UTF-8`   |
+| Keyboard | French BEPO      |
