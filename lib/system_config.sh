@@ -2,20 +2,20 @@
 # System configuration functions
 
 configure_system() {
-    print_status "Configuring system"
-    
-    # Generate fstab
-    genfstab -U /mnt >> /mnt/etc/fstab
-    
-    # Configure system in chroot
-    arch-chroot /mnt /bin/bash << EOF
+	print_status "Configuring system"
+
+	# Generate fstab
+	genfstab -U /mnt >>/mnt/etc/fstab
+
+	# Configure system in chroot
+	arch-chroot /mnt /bin/bash <<EOF
 # Set timezone
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 hwclock --systohc
 
 # Configure locale
 echo "$LOCALE UTF-8" >> /etc/locale.gen
-echo "en_US.UTF-8" >> /etc/locale.gen
+echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 locale-gen
 echo "LANG=$LOCALE" > /etc/locale.conf
 
@@ -40,9 +40,10 @@ systemctl enable reflector.timer
 systemctl enable fstrim.timer
 
 # Create user
-useradd -m -G wheel,audio,video,optical,storage -s /bin/fish $USERNAME
+useradd -m -G wheel,audio,video,optical,storage -s /bin/fish "$USERNAME"
+# Temporary password set to username -- CHANGE AFTER FIRST LOGIN
 echo "$USERNAME:$USERNAME" | chpasswd
-usermod -a -G plugdev $USERNAME
+usermod -a -G plugdev "$USERNAME"
 
 # Install and configure doas as primary
 pacman -S --noconfirm opendoas
@@ -98,25 +99,26 @@ systemctl mask tpm2.target
 
 EOF
 
-    # Apply GPU-specific configuration
-    if [[ "$GPU_TYPE" == "nvidia" ]]; then
-        configure_nvidia_system
-    fi
+	# Apply GPU-specific configuration
+	if [[ "$GPU_TYPE" == "nvidia" ]]; then
+		configure_nvidia_system
+	fi
 
-    print_success "System configured with doas"
+	print_success "System configured with doas"
 }
 
 configure_openssh() {
-    print_status "Configuring system"
-    
-    # Configure system in chroot
-    arch-chroot /mnt /bin/bash << EOF
+	print_status "Configuring OpenSSH"
+
+	# Configure system in chroot
+	arch-chroot /mnt /bin/bash <<EOF
 # Install and configure SSH server for remote debugging
 pacman -S --noconfirm openssh
 
 # Jail directory for SFTP
 mkdir -p /var/lib/jail
 useradd -G sshusers -s /usr/bin/nologin -d /var/lib/jail sftp_user
+# Temporary password -- CHANGE AFTER FIRST LOGIN
 echo "sftp_user:sftp_user" | chpasswd
 
 # Configure SSH
@@ -155,17 +157,15 @@ chmod 644 /etc/ssh/authorized_keys/vincent
 systemctl enable sshd
 EOF
 
-    print_success "System configured with SSH enabled"
-    echo
-    echo -e "${GREEN}SSH will be available after reboot${NC}"
-    echo "Connect with: ssh vincent@<ip-address>"
-    echo -e "${YELLOW}Don't forget to set password: passwd${NC}"
+	print_success "OpenSSH configured and enabled"
+	print_status "Connect after reboot: ssh vincent@<ip-address>"
+	print_warning "Don't forget to set password: passwd"
 }
 
 configure_firewall() {
-    print_status "Configuring firewall with nftables"
+	print_status "Configuring firewall with nftables"
 
-    arch-chroot /mnt /bin/bash << EOF
+	arch-chroot /mnt /bin/bash <<EOF
 pacman -Sy --noconfirm nftables
 
 # If iptables firewall is set up for some reason, disable it
@@ -294,15 +294,9 @@ systemctl enable nftables.service
 systemctl start nftables.service
 EOF
 
-    print_success "Firewall setup completed successfully!"
-    echo "Open ports:"
-    echo "  TCP: 22 (SSH), 80 (HTTP), 443 (HTTPS), 1234, 2222, 8080"
-    echo "  UDP: 53 (DNS)"
-    echo "  Steam ports: Various TCP/UDP ranges for gaming and remote play"
-    echo
-    echo -e "${YELLOW}Important notes:${NC}"
-    echo -e "${YELLOW}  - SSH is accessible on port 22. Ensure you have access before disconnecting!${NC}"
-    echo -e "${YELLOW}  - Configuration is saved in /etc/nftables.conf${NC}"
-    echo -e "${YELLOW}  - Service will start automatically on boot${NC}"
-    echo -e "${YELLOW}  - To modify rules, edit /etc/nftables.conf and run: systemctl reload nftables${NC}"
+	print_success "Firewall setup completed"
+	print_status "Open TCP: 22 (SSH), 80 (HTTP), 443 (HTTPS), 1234, 2222, 8080"
+	print_status "Open UDP: 53 (DNS), Steam ports"
+	print_warning "Ensure you have SSH access before disconnecting"
+	print_warning "Config saved in /etc/nftables.conf, reload with: systemctl reload nftables"
 }
