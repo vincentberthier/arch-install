@@ -40,6 +40,9 @@ install_development_packages() {
 		"eslint" "prettier" "bash-language-server" "shfmt" "buf" "yaml-language-server"
 		"typescript-language-server" "cdrtools" "heaptrack"
 
+		# Node.js
+		"nodejs" "npm"
+
 		# Modern dev tooling
 		"ast-grep" "just" "ruff" "ty" "uv" "glab"
 		"cargo-make" "dpkg" "syslinux"
@@ -103,6 +106,9 @@ install_development_packages() {
 	# Install Python packages via pip
 	install_python_packages
 
+	# Install global npm packages
+	install_npm_packages
+
 	print_success "Development packages installation completed"
 }
 
@@ -144,6 +150,24 @@ install_python_packages() {
 
 	deactivate
 	print_success "Python packages installed"
+}
+
+install_npm_packages() {
+	print_status "Installing global npm packages"
+
+	local npm_packages=(
+		"@anthropic-ai/claude-code" # AI coding assistant
+		"ccstatusline"              # Claude Code status line
+	)
+
+	for package in "${npm_packages[@]}"; do
+		print_status "Installing npm package: ${package}"
+		if ! npm install -g "${package}"; then
+			print_warning "Failed to install ${package}, continuing..."
+		fi
+	done
+
+	print_success "Global npm packages installed"
 }
 
 install_podman() {
