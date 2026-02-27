@@ -9,7 +9,7 @@ install_development_packages() {
 		# Development core
 		"jujutsu" "openssl" "git" "gcovr" "grcov" "tokei" "lcov"
 		"taplo-cli" "marksman" "bacon" "graphviz" "gnuplot"
-		"perf" "kcachegrind" "hyperfine" "valgrind" "gdb"
+		"perf" "kcachegrind" "hyperfine" "valgrind" "gdb" "cgdb"
 		"strace" "ltrace" "mermaid-cli"
 
 		# Rust stuff
