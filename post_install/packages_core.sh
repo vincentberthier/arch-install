@@ -58,7 +58,7 @@ install_core_packages() {
 		"blueman"
 
 		# Filesystem utilities
-		"dosfstools" "ntfs-3g"
+		"dosfstools" "ntfs-3g" "xfsprogs"
 
 		# Networking / sysadmin
 		"nmap" "iperf3" "sshpass" "screen" "smem"
