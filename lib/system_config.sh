@@ -215,6 +215,9 @@ table inet filter {
         # Allow DHCP on libvirt bridge (virbr0)
         iif "virbr0" udp dport { 67, 68 } accept
 
+        # Allow SMB on libvirt bridge (virbr0)
+        iif "virbr0" tcp dport 445 accept
+
         # SSH access
         tcp dport \$SSH_PORT ct state new accept
 
