@@ -120,8 +120,13 @@ install_rust_packages() {
 	rustup target add x86_64-unknown-linux-musl
 	rustup target add aarch64-unknown-linux-gnu
 	rustup target add riscv64gc-unknown-linux-gnu
+	rustup target add x86_64-pc-windows-msvc
 
 	export PATH="$HOME/.cargo/bin:$PATH"
+
+	# Windows cross-compilation via xwin (downloads MSVC headers/libs)
+	cargo binstall --no-confirm xwin
+	xwin --accept-license splat --output ~/.xwin
 
 	cargo binstall --no-confirm cargo-criterion
 	cargo binstall --no-confirm cargo-mutants
