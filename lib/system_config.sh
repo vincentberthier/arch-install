@@ -212,6 +212,9 @@ table inet filter {
         ip protocol icmp accept
         ip6 nexthdr icmpv6 accept
 
+        # Allow DHCP on libvirt bridge (virbr0)
+        iif "virbr0" udp dport { 67, 68 } accept
+
         # SSH access
         tcp dport \$SSH_PORT ct state new accept
 
