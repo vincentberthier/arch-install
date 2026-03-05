@@ -271,7 +271,9 @@ table inet filter {
         # Allow forwarding for established and related connections
         ct state established,related accept
 
-        # Add custom forwarding rules here if needed
+        # Allow forwarding to/from libvirt bridge (virbr0)
+        iif "virbr0" accept
+        oif "virbr0" accept
     }
 
     chain output {
@@ -280,17 +282,15 @@ table inet filter {
     }
 }
 
-# Optional: NAT table for masquerading (useful if this machine acts as a router)
-# Uncomment if needed
-# table ip nat {
-#     chain postrouting {
-#         type nat hook postrouting priority 100; policy accept;
-#         # masquerade private networks
-#         ip saddr 192.168.0.0/16 oifname != "lo" masquerade
-#         ip saddr 10.0.0.0/8 oifname != "lo" masquerade
-#         ip saddr 172.16.0.0/12 oifname != "lo" masquerade
-#     }
-# }
+table ip nat {
+    chain postrouting {
+        type nat hook postrouting priority 100; policy accept;
+        # Masquerade private networks
+        ip saddr 192.168.0.0/16 oifname != "lo" masquerade
+        ip saddr 10.0.0.0/8 oifname != "lo" masquerade
+        ip saddr 172.16.0.0/12 oifname != "lo" masquerade
+    }
+}
 NFTABLES_EOF
 
 # Set proper permissions
