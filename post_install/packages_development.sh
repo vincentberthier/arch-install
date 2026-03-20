@@ -70,6 +70,7 @@ install_development_packages() {
 	local aur_packages=(
 		"cargo-criterion"              # Rust benchmarks
 		"cargo-mutants"                # Mutation testing
+		"rr"                           # Record and replay debugger
 		"hotspot"                      # GUI for perf
 		"ltex-ls-bin"                  # LS for LaTeX
 		"duplicacy"                    # Backup tool
