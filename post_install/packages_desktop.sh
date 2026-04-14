@@ -26,7 +26,7 @@ install_desktop_packages() {
 	# Desktop AUR packages
 	local aur_packages=(
 		"zen-browser-bin"             # Primary browser
-		"wl-screenrec"                # Screen record for Wayland
+		"wl-screenrec-git"            # Screen record for Wayland (git tracks newer ffmpeg)
 		"webcord"                     # Discord alternative
 		"sddm-theme-corners-git"      # SDDM theme
 		"limine-snapper-sync"         # Boot on snapshots

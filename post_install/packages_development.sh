@@ -69,7 +69,6 @@ install_development_packages() {
 		"postman-bin"                  # Development
 		"teams-for-linux-bin"          # Work communication
 		"vscode-langservers-extracted" # LS for web stuff
-		"llvm-bolt"                    # Link Time Optimization
 		"gitlab-ci-local"              # Run gitlab CI locally
 		"mprocs-bin"                   # Run lots of stuff
 		"scls"                         # Snippet LS for Helix
