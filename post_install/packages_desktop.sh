@@ -54,13 +54,11 @@ install_desktop_packages() {
 	# avahi for Sunshine/Moonlight mDNS discovery
 	enable_service "desktop" system avahi-daemon.service --now || true
 
-	# Sunshine always-on (headless streaming host). Only on hephaistos: the
-	# user service needs loginctl linger so systemd --user persists without
-	# an interactive login.
+	# Sunshine always-on streaming host (hephaistos only). Ships a user unit
+	# if the AUR package didn't install one, then enables lingering so the
+	# systemd --user instance persists across logout/reboot.
 	if should_run_for_host "$HOSTNAME" "hephaistos"; then
-		print_status "Enabling lingering + Sunshine user service for always-on streaming"
-		doas loginctl enable-linger "$USER"
-		enable_service "desktop" user sunshine.service --now || true
+		setup_sunshine_service
 	fi
 
 	# Install problematic AUR packages with PGP issues
@@ -71,6 +69,47 @@ install_desktop_packages() {
 	echo "zen-bin" | doas tee -a /etc/1password/custom_allowed_browsers
 
 	print_success "Desktop packages installation completed"
+}
+
+setup_sunshine_service() {
+	print_status "Setting up Sunshine user service"
+
+	local unit_dir="$HOME/.config/systemd/user"
+	local unit_file="${unit_dir}/sunshine.service"
+	mkdir -p "$unit_dir"
+
+	# Only write our unit if the AUR package didn't ship one system-wide.
+	# Check /usr/lib/systemd/user/ — if it's there, let the packaged unit win.
+	if [[ ! -f /usr/lib/systemd/user/sunshine.service ]]; then
+		cat >"$unit_file" <<'SUNSHINE_UNIT_EOF'
+[Unit]
+Description=Sunshine game streaming host
+StartLimitIntervalSec=500
+StartLimitBurst=5
+# Sunshine captures the running compositor, so it needs a graphical session.
+PartOf=graphical-session.target
+Wants=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/sunshine
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=graphical-session.target
+SUNSHINE_UNIT_EOF
+		print_status "Wrote ${unit_file}"
+	else
+		print_status "Using packaged /usr/lib/systemd/user/sunshine.service"
+	fi
+
+	systemctl --user daemon-reload
+
+	# Linger so systemd --user stays up without an interactive login, then
+	# enable (not --now: no graphical session during post_install).
+	doas loginctl enable-linger "$USER"
+	enable_service "desktop" user sunshine.service || true
 }
 
 install_pgp_messed_up_packages() {
