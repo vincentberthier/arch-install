@@ -183,7 +183,7 @@ EOF
 }
 
 setup_virtualization() {
-	doas pacman -S --noconfirm qemu-full virt-manager libvirt dnsmasq bridge-utils swtpm
+	install_pacman_packages "virtualization" qemu-full virt-manager libvirt dnsmasq iproute2 swtpm
 	doas systemctl enable libvirtd
 	doas systemctl start libvirtd
 	doas usermod -a -G libvirt "$USER"
