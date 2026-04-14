@@ -111,15 +111,28 @@ install_rust_packages() {
 
 	export PATH="$HOME/.cargo/bin:$PATH"
 
-	# Windows cross-compilation via xwin (downloads MSVC headers/libs)
-	cargo binstall --no-confirm xwin
-	xwin --accept-license splat --output ~/.xwin
+	local cargo_packages=(
+		xwin
+		cargo-criterion
+		cargo-mutants
+		cargo-pgo
+		gitmoji-rs
+		starship-jj
+	)
+	local pkg
+	for pkg in "${cargo_packages[@]}"; do
+		print_status "cargo binstall: installing $pkg"
+		if ! cargo binstall --no-confirm "$pkg"; then
+			record_failure "cargo-binstall" "$pkg"
+		fi
+	done
 
-	cargo binstall --no-confirm cargo-criterion
-	cargo binstall --no-confirm cargo-mutants
-	cargo binstall --no-confirm cargo-pgo
-	cargo binstall --no-confirm gitmoji-rs
-	cargo binstall --no-confirm starship-jj
+	# Windows cross-compilation via xwin (downloads MSVC headers/libs)
+	if command -v xwin &>/dev/null; then
+		xwin --accept-license splat --output ~/.xwin
+	else
+		print_warning "xwin not available, skipping MSVC splat"
+	fi
 }
 
 install_python_packages() {

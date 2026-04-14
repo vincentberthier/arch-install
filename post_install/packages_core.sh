@@ -81,7 +81,7 @@ install_core_packages() {
 		"dosfstools" "ntfs-3g" "xfsprogs"
 
 		# Networking / sysadmin
-		"nmap" "iperf3" "sshpass" "screen" "smem"
+		"nmap" "iperf3" "sshpass" "screen"
 	)
 
 	# Add GPU-specific core packages

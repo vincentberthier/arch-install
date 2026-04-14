@@ -35,8 +35,7 @@ install_desktop_packages() {
 		"bibata-cursor-theme-bin"     # Cursor theme
 		"gimp-plugin-resynthesizer"   # GIMP plugin
 		"matugen-git"                 # Material You color generation
-		"noctalia"                    # Niri theme integration
-		"noctalia-shell"              # Noctalia shell component
+		"noctalia-shell"              # Niri theme integration
 		"brave-bin"                   # Fallback browser
 		"onedrive-abraunegg"          # OneDrive sync backend
 		"whisper.cpp-vulkan"          # Speech-to-text (Vulkan GPU)
@@ -52,7 +51,7 @@ install_desktop_packages() {
 	install_pgp_messed_up_packages
 
 	# Add zen-browser to 1password integrations
-	doas mkdir /etc/1password
+	doas mkdir -p /etc/1password
 	echo "zen-bin" | doas tee -a /etc/1password/custom_allowed_browsers
 
 	print_success "Desktop packages installation completed"
@@ -61,7 +60,7 @@ install_desktop_packages() {
 install_pgp_messed_up_packages() {
 	print_status "Installing AUR packages with PGP issues"
 
-	local problematic_packages=("1password" "1password-cli" "spotify")
+	local problematic_packages=("1password" "1password-cli")
 
 	for package in "${problematic_packages[@]}"; do
 		print_status "Installing $package"
