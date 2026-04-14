@@ -4,6 +4,12 @@
 install_base_system() {
 	print_status "Installing base system"
 
+	# Refresh keyring on the live ISO before pacstrap: an older ISO ships a
+	# stale archlinux-keyring and pacstrap fails with "unknown trust" PGP errors
+	# for packages signed by newer packagers.
+	print_status "Refreshing archlinux-keyring on live ISO"
+	pacman -Sy --noconfirm --needed archlinux-keyring
+
 	# Update mirrors
 	# reflector --country France --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
 
