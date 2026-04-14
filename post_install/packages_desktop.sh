@@ -45,7 +45,7 @@ install_desktop_packages() {
 	install_aur_packages "desktop" "${aur_packages[@]}"
 
 	# Enable limine-snapper-sync service
-	doas systemctl enable --now limine-snapper-sync.service
+	enable_service "desktop" system limine-snapper-sync.service --now || true
 
 	# Install problematic AUR packages with PGP issues
 	install_pgp_messed_up_packages

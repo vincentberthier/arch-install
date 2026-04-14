@@ -180,7 +180,7 @@ install_npm_packages() {
 install_podman() {
 	print_status "Installing Podman"
 
-	doas pacman -Sy --noconfirm podman podman-compose podman-docker buildah skopeo fuse-overlayfs slirp4netns
+	install_pacman_packages "podman" podman podman-compose podman-docker buildah skopeo fuse-overlayfs slirp4netns
 	doas usermod --add-subuids 100000-165535 --add-subgids 100000-165535 "$USER"
 	mkdir -p ~/.config/containers
 
@@ -207,9 +207,9 @@ prefix = "quay.io"
 location = "quay.io"
 EOF
 
-	doas systemctl enable --now podman.socket
-	systemctl --user enable --now podman.socket
-	systemctl --user enable --now podman-restart.service
+	enable_service "podman" system podman.socket --now || true
+	enable_service "podman" user podman.socket --now || true
+	enable_service "podman" user podman-restart.service --now || true
 }
 
 install_embedded_packages() {

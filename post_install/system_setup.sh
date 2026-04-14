@@ -15,9 +15,9 @@ setup_systemd_services() {
 	print_status "Setting up systemd user services"
 
 	# Enable user services
-	systemctl --user enable pipewire
-	systemctl --user enable pipewire-pulse
-	systemctl --user enable wireplumber
+	enable_service "systemd" user pipewire || true
+	enable_service "systemd" user pipewire-pulse || true
+	enable_service "systemd" user wireplumber || true
 
 	# Create update timer
 	mkdir -p ~/.config/systemd/user
@@ -55,11 +55,11 @@ EOF
 
 	# Enable the timer
 	systemctl --user daemon-reload
-	systemctl --user enable daily-update.timer
+	enable_service "systemd" user daily-update.timer || true
 
 	# Automount
-	doas pacman -S --noconfirm udisks2 udiskie
-	doas systemctl enable --now udisks2.service
+	install_pacman_packages "automount" udisks2 udiskie
+	enable_service "systemd" system udisks2.service --now || true
 	doas usermod -a -G storage,disk "$USER"
 
 	mkdir -p ~/.config/autostart
@@ -122,7 +122,7 @@ Description=Duplicacy backups
 
 [Service]
 Type=simple
-ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"; export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"; /bin/bash "$XDG_CONFIG_HOME/duplicacy/backup.sh"
+ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"; export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"; /bin/bash "$XDG_CONFIG_HOME/duplicacy/backup.sh"'
 
 [Install]
 WantedBy=default.target
@@ -171,20 +171,14 @@ EOF
 	systemctl --user daemon-reload
 	print_status "Enabling and starting services"
 
-	# Enable the services
-	systemctl --user enable duplicacy-backup.service
-	systemctl --user enable duplicacy-prune.service
-
-	# Enable and start the timers
-	systemctl --user enable duplicacy-backup.timer
-	systemctl --user enable duplicacy-prune.timer
-	systemctl --user start duplicacy-backup.timer
-	systemctl --user start duplicacy-prune.timer
+	enable_service "duplicacy" user duplicacy-backup.service || true
+	enable_service "duplicacy" user duplicacy-prune.service || true
+	enable_service "duplicacy" user duplicacy-backup.timer --now || true
+	enable_service "duplicacy" user duplicacy-prune.timer --now || true
 }
 
 setup_virtualization() {
 	install_pacman_packages "virtualization" qemu-full virt-manager libvirt dnsmasq iproute2 swtpm
-	doas systemctl enable libvirtd
-	doas systemctl start libvirtd
+	enable_service "virtualization" system libvirtd --now || true
 	doas usermod -a -G libvirt "$USER"
 }

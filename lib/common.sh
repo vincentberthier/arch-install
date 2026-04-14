@@ -122,6 +122,41 @@ install_aur_packages() {
     done
 }
 
+# Enable (and optionally start) a systemd unit without letting a failure abort
+# the whole install. Works for both system and --user scopes. Failures are
+# recorded so they show up in the final summary.
+#
+# Usage: enable_service <phase> system|user <unit> [--now]
+enable_service() {
+    local phase="$1"
+    local scope="$2"
+    local unit="$3"
+    local now="${4:-}"
+
+    local -a cmd
+    case "$scope" in
+        system) cmd=(doas systemctl) ;;
+        user) cmd=(systemctl --user) ;;
+        *)
+            print_error "enable_service: invalid scope '$scope'"
+            return 1
+            ;;
+    esac
+
+    local -a enable_args=(enable)
+    if [[ "$now" == "--now" ]]; then
+        enable_args+=(--now)
+    fi
+    enable_args+=("$unit")
+
+    print_status "${phase}: enabling ${scope} unit ${unit}${now:+ (--now)}"
+    if ! "${cmd[@]}" "${enable_args[@]}"; then
+        record_failure "${phase}" "$unit" "systemctl ${scope} enable failed"
+        return 1
+    fi
+    return 0
+}
+
 print_failure_summary() {
     echo
     if ((${#POST_INSTALL_FAILURES[@]} == 0)); then
