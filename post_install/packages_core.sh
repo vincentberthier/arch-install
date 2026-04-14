@@ -93,23 +93,12 @@ install_core_packages() {
 	fi
 
 	print_status "Installing Core packages (${#packages[@]} packages)"
-
-	# Split into chunks to avoid command line length issues
-	local chunk_size=20
-	for ((i = 0; i < ${#packages[@]}; i += chunk_size)); do
-		local chunk=("${packages[@]:i:chunk_size}")
-		print_status "Installing chunk: ${chunk[*]}"
-
-		if ! doas pacman -S --needed --noconfirm "${chunk[@]}"; then
-			print_warning "Some packages in chunk failed to install, continuing..."
-		fi
-	done
+	install_pacman_packages "core" "${packages[@]}"
 
 	bat cache --build
 
 	# Install essential AUR packages
 	local aur_packages=(
-		"paru"          # AUR helper (primary)
 		"yay"           # AUR helper (fallback)
 		"dprint-bin"    # Formatter
 		"watchman-bin"  # Inotify-like
@@ -118,12 +107,7 @@ install_core_packages() {
 		"trashy-bin"    # Safe rm replacement
 	)
 
-	for package in "${aur_packages[@]}"; do
-		print_status "Installing $package from AUR"
-		if ! paru -S --needed --noconfirm "$package"; then
-			print_warning "Failed to install $package, continuing..."
-		fi
-	done
+	install_aur_packages "core" "${aur_packages[@]}"
 
 	print_success "Core packages installation completed"
 }

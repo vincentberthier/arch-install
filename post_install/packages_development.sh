@@ -22,7 +22,7 @@ install_development_packages() {
 
 		# C++ stuff
 		"clang" "lldb" "cmake" "make" "ninja" "zlib" "catch2" "doxygen" "bear" "vcpkg"
-		"cppcheck" "check" "cinclude2dot" "libmilter" "libxml2-2.9"
+		"cppcheck" "check" "cinclude2dot" "libmilter" "libxml2-legacy"
 
 		# LaTeX
 		"texlive-basic" "texlive-latex" "texlive-latexrecommended" "texlive-latexextra"
@@ -53,16 +53,7 @@ install_development_packages() {
 	doas pacman -R cargo --noconfirm >/dev/null 2>&1 || true
 	doas pacman -R rust --noconfirm >/dev/null 2>&1 || true
 
-	# Split into chunks
-	local chunk_size=20
-	for ((i = 0; i < ${#packages[@]}; i += chunk_size)); do
-		local chunk=("${packages[@]:i:chunk_size}")
-		print_status "Installing chunk: ${chunk[*]}"
-
-		if ! doas pacman -S --needed --noconfirm "${chunk[@]}"; then
-			print_warning "Some packages in chunk failed to install, continuing..."
-		fi
-	done
+	install_pacman_packages "development" "${packages[@]}"
 
 	install_rust_packages
 
@@ -95,12 +86,7 @@ install_development_packages() {
 		"rustrover-jre" # JRE for RustRover
 	)
 
-	for package in "${aur_packages[@]}"; do
-		print_status "Installing $package from AUR"
-		if ! paru -S --needed --noconfirm "$package"; then
-			print_warning "Failed to install $package, continuing..."
-		fi
-	done
+	install_aur_packages "development" "${aur_packages[@]}"
 
 	doas sed -i "s/#user_allow_other/user_allow_other/" /etc/fuse.conf
 
@@ -151,7 +137,9 @@ install_python_packages() {
 	pip install --upgrade pip
 	for package in "${python_packages[@]}"; do
 		print_status "Installing Python package: $package"
-		pip install "$package" || print_warning "Failed to install $package"
+		if ! pip install "$package"; then
+			record_failure "python-pip" "$package"
+		fi
 	done
 
 	deactivate
@@ -169,7 +157,7 @@ install_npm_packages() {
 	for package in "${npm_packages[@]}"; do
 		print_status "Installing npm package: ${package}"
 		if ! npm install -g "${package}"; then
-			print_warning "Failed to install ${package}, continuing..."
+			record_failure "npm-global" "${package}"
 		fi
 	done
 
@@ -227,13 +215,7 @@ install_embedded_packages() {
 		"python-bleak"
 	)
 
-	local chunk_size=20
-	for ((i = 0; i < ${#packages[@]}; i += chunk_size)); do
-		local chunk=("${packages[@]:i:chunk_size}")
-		if ! doas pacman -S --needed --noconfirm "${chunk[@]}"; then
-			print_warning "Some embedded packages failed to install, continuing..."
-		fi
-	done
+	install_pacman_packages "embedded" "${packages[@]}"
 
 	# AUR packages
 	local aur_packages=(
@@ -241,12 +223,7 @@ install_embedded_packages() {
 		"picotool"        # Raspberry Pi Pico tool
 	)
 
-	for package in "${aur_packages[@]}"; do
-		print_status "Installing $package from AUR"
-		if ! paru -S --needed --noconfirm "$package"; then
-			print_warning "Failed to install $package, continuing..."
-		fi
-	done
+	install_aur_packages "embedded" "${aur_packages[@]}"
 
 	print_success "Embedded/electronics packages installed"
 }

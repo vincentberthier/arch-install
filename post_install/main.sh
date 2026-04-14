@@ -94,6 +94,11 @@ main() {
 	fi
 
 	print_success "Package installation completed!"
+
+	# Print the list of packages that failed across every install phase so
+	# individual failures aren't lost in the scrollback.
+	print_failure_summary
+
 	echo
 	print_success "Installation Summary:"
 	echo "  - System packages installed"

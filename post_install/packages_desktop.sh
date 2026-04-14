@@ -21,44 +21,29 @@ install_desktop_packages() {
 	)
 
 	print_status "Installing Desktop packages (${#packages[@]} packages)"
-
-	# Split into chunks
-	local chunk_size=20
-	for ((i = 0; i < ${#packages[@]}; i += chunk_size)); do
-		local chunk=("${packages[@]:i:chunk_size}")
-		print_status "Installing chunk: ${chunk[*]}"
-
-		if ! doas pacman -S --needed --noconfirm "${chunk[@]}"; then
-			print_warning "Some packages in chunk failed to install, continuing..."
-		fi
-	done
+	install_pacman_packages "desktop" "${packages[@]}"
 
 	# Desktop AUR packages
 	local aur_packages=(
-		"zen-browser-bin"           # Primary browser
-		"wl-screenrec"              # Screen record for Wayland
-		"webcord"                   # Discord alternative
-		"sddm-theme-corners-git"    # SDDM theme
-		"limine-snapper-sync"       # Boot on snapshots
-		"limine-entry-tool"         # Limine sync helpers
-		"wleave-git"                # Logout utils
-		"bibata-cursor-theme-bin"   # Cursor theme
-		"gimp-plugin-resynthesizer" # GIMP plugin
-		"matugen-git"               # Material You color generation
-		"noctalia"                  # Niri theme integration
-		"noctalia-shell"            # Noctalia shell component
-		"brave-bin"                 # Fallback browser
-		"onedrive-abraunegg"        # OneDrive sync backend
-		"whisper.cpp-vulkan"        # Speech-to-text (Vulkan GPU)
+		"zen-browser-bin"             # Primary browser
+		"wl-screenrec"                # Screen record for Wayland
+		"webcord"                     # Discord alternative
+		"sddm-theme-corners-git"      # SDDM theme
+		"limine-snapper-sync"         # Boot on snapshots
+		"limine-entry-tool"           # Limine sync helpers
+		"wleave-git"                  # Logout utils
+		"bibata-cursor-theme-bin"     # Cursor theme
+		"gimp-plugin-resynthesizer"   # GIMP plugin
+		"matugen-git"                 # Material You color generation
+		"noctalia"                    # Niri theme integration
+		"noctalia-shell"              # Noctalia shell component
+		"brave-bin"                   # Fallback browser
+		"onedrive-abraunegg"          # OneDrive sync backend
+		"whisper.cpp-vulkan"          # Speech-to-text (Vulkan GPU)
 		"whisper.cpp-model-medium.en" # Whisper medium English model
 	)
 
-	for package in "${aur_packages[@]}"; do
-		print_status "Installing $package from AUR"
-		if ! paru -S --needed --noconfirm "$package"; then
-			print_warning "Failed to install $package, continuing..."
-		fi
-	done
+	install_aur_packages "desktop" "${aur_packages[@]}"
 
 	# Enable limine-snapper-sync service
 	doas systemctl enable --now limine-snapper-sync.service
@@ -80,13 +65,18 @@ install_pgp_messed_up_packages() {
 
 	for package in "${problematic_packages[@]}"; do
 		print_status "Installing $package"
-		if ! paru -S --noconfirm "$package"; then
-			print_warning "Normal install failed for $package, trying with skipped PGP check"
-			paru -S --noconfirm --mflags="--skippgpcheck" "$package" ||
-				print_warning "Failed to install $package even with skipped PGP"
+		if paru -S --noconfirm "$package"; then
+			continue
+		fi
+		print_warning "Normal install failed for $package, retrying with --skippgpcheck"
+		if ! paru -S --noconfirm --mflags="--skippgpcheck" "$package"; then
+			record_failure "desktop-pgp (AUR)" "$package" "install failed even with --skippgpcheck"
 		fi
 	done
-	paru -S --noconfirm --mflags="--nocheck" wezterm-git # test fails on SSH agent
+
+	if ! paru -S --noconfirm --mflags="--nocheck" wezterm-git; then
+		record_failure "desktop-pgp (AUR)" "wezterm-git" "install failed with --nocheck"
+	fi
 
 	print_success "Problematic AUR packages installation completed"
 }

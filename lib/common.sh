@@ -59,6 +59,86 @@ detect_gpu_type() {
     export GPU_TYPE
 }
 
+# Post-install failure tracker. Each helper that installs a package appends
+# a "<phase>: <package> (<reason>)" entry here on failure; main.sh prints the
+# collected list at the end so failures are not lost in the scrollback.
+declare -ga POST_INSTALL_FAILURES=()
+
+record_failure() {
+    local phase="$1"
+    local package="$2"
+    local reason="${3:-install failed}"
+    POST_INSTALL_FAILURES+=("${phase}: ${package} (${reason})")
+    print_warning "${phase}: failed to install ${package} (${reason})"
+}
+
+# Install a list of pacman packages in chunks. If the chunk transaction fails
+# (typically because one package name is missing from the repos and pacman
+# aborts the whole batch), retry each package in that chunk individually so a
+# single bad name does not drop the other 19 with it. Any package that still
+# fails is recorded via record_failure.
+#
+# Usage: install_pacman_packages <phase> <pkg...>
+install_pacman_packages() {
+    local phase="$1"
+    shift
+    local -a packages=("$@")
+    local chunk_size=20
+    local i
+
+    for ((i = 0; i < ${#packages[@]}; i += chunk_size)); do
+        local chunk=("${packages[@]:i:chunk_size}")
+        print_status "${phase}: installing chunk of ${#chunk[@]}"
+
+        if doas pacman -S --needed --noconfirm "${chunk[@]}"; then
+            continue
+        fi
+
+        print_warning "${phase}: chunk failed, retrying packages individually"
+        local pkg
+        for pkg in "${chunk[@]}"; do
+            if ! doas pacman -S --needed --noconfirm "$pkg"; then
+                record_failure "${phase}" "$pkg"
+            fi
+        done
+    done
+}
+
+# Install a list of AUR packages via paru, one at a time. Each failure is
+# tracked so the summary at the end shows exactly what did not build.
+#
+# Usage: install_aur_packages <phase> <pkg...>
+install_aur_packages() {
+    local phase="$1"
+    shift
+    local -a packages=("$@")
+    local pkg
+
+    for pkg in "${packages[@]}"; do
+        print_status "${phase} (AUR): installing $pkg"
+        if ! paru -S --needed --noconfirm "$pkg"; then
+            record_failure "${phase} (AUR)" "$pkg"
+        fi
+    done
+}
+
+print_failure_summary() {
+    echo
+    if ((${#POST_INSTALL_FAILURES[@]} == 0)); then
+        print_success "All tracked packages installed successfully"
+        return
+    fi
+
+    print_warning "=================================================="
+    print_warning "  ${#POST_INSTALL_FAILURES[@]} package(s) failed to install"
+    print_warning "=================================================="
+    local entry
+    for entry in "${POST_INSTALL_FAILURES[@]}"; do
+        echo "  - ${entry}"
+    done
+    echo
+}
+
 # Global CPU vendor + microcode variables. Set by detect_cpu_vendor based on
 # /proc/cpuinfo — independent from GPU_TYPE so Intel+AMD or AMD+Nvidia boxes
 # get the right microcode.

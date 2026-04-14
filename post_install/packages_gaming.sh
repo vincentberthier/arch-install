@@ -17,17 +17,7 @@ install_gaming_packages() {
     fi
     
     print_status "Installing Gaming packages (${#packages[@]} packages)"
-    
-    # Split into chunks
-    local chunk_size=20
-    for ((i=0; i<${#packages[@]}; i+=chunk_size)); do
-        local chunk=("${packages[@]:i:chunk_size}")
-        print_status "Installing chunk: ${chunk[*]}"
-        
-        if ! doas pacman -S --needed --noconfirm "${chunk[@]}"; then
-            print_warning "Some packages in chunk failed to install, continuing..."
-        fi
-    done
-    
+    install_pacman_packages "gaming" "${packages[@]}"
+
     print_success "Gaming packages installation completed"
 }
