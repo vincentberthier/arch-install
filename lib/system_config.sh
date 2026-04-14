@@ -187,6 +187,10 @@ define HTTPS_PORT = 443
 define CUSTOM_TCP_PORTS = { 1234, 2222, 8080 }
 define DNS_PORT = 53
 
+# Sunshine (Moonlight game streaming host)
+define SUNSHINE_TCP_PORTS = { 47984, 47989, 48010 }     # HTTPS, HTTP, RTSP
+define SUNSHINE_UDP_PORTS = { 47998, 47999, 48000, 48002 }  # video, control, audio, mic
+
 # Steam ports for gaming and remote play
 define STEAM_CLIENT_PORTS = { 27000-27100 }      # Steam client traffic
 define STEAM_SERVER_PORTS = { 27015-27030 }      # Steam game servers
@@ -229,6 +233,10 @@ table inet filter {
 
         # DNS
         udp dport \$DNS_PORT accept
+
+        # Sunshine (Moonlight host)
+        tcp dport \$SUNSHINE_TCP_PORTS ct state new accept
+        udp dport \$SUNSHINE_UDP_PORTS accept
 
         # Steam Client Traffic (UDP)
         udp dport \$STEAM_CLIENT_PORTS accept
