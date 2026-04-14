@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source-path=SCRIPTDIR
 set -euo pipefail
 
 # Post-Installation Main Orchestrator
@@ -8,15 +9,23 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOSTNAME="$(hostname)"
 
 # Source all modules
+# shellcheck source=../lib/common.sh
 source "${SCRIPT_DIR}/lib/common.sh"
+# shellcheck source=../lib/gpu_specific.sh
 source "${SCRIPT_DIR}/lib/gpu_specific.sh"
 
 # Source installation modules
+# shellcheck source=packages_core.sh
 source "${SCRIPT_DIR}/packages_core.sh"
+# shellcheck source=packages_desktop.sh
 source "${SCRIPT_DIR}/packages_desktop.sh"
+# shellcheck source=packages_development.sh
 source "${SCRIPT_DIR}/packages_development.sh"
+# shellcheck source=packages_gaming.sh
 source "${SCRIPT_DIR}/packages_gaming.sh"
+# shellcheck source=system_setup.sh
 source "${SCRIPT_DIR}/system_setup.sh"
+# shellcheck source=user_setup.sh
 source "${SCRIPT_DIR}/user_setup.sh"
 
 main() {
