@@ -19,18 +19,17 @@ TARGET_DISK_LIMINE=$(lsblk -no PKNAME ${ROOT_DEVICE} | head -1)
 limine bios-install /dev/${TARGET_DISK_LIMINE}
 EOF
 
-    # Configure based on GPU type
+    # Configure based on GPU type. Microcode image comes from CPU_MICROCODE_IMG
+    # (set by detect_cpu_vendor), independent of the GPU choice.
     local KERNEL_PARAMS="root=LABEL=ARCH rootflags=subvol=@ rw quiet loglevel=3"
-    local MICROCODE_IMG=""
-    
+    local MICROCODE_IMG="$CPU_MICROCODE_IMG"
+
     if [[ "$GPU_TYPE" == "nvidia" ]]; then
         print_status "Configuring Limine for Nvidia GPU"
         KERNEL_PARAMS="$KERNEL_PARAMS $(get_nvidia_kernel_params)"
-        MICROCODE_IMG="intel-ucode.img"
     else
         print_status "Configuring Limine for AMD GPU"
         KERNEL_PARAMS="$KERNEL_PARAMS $(get_amd_kernel_params)"
-        MICROCODE_IMG="amd-ucode.img"
     fi
 
     arch-chroot /mnt /bin/bash << LIMINE_EOF

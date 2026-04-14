@@ -138,6 +138,14 @@ Known hosts: `athena`, `gaia`, `hephaistos`.
 Automatic via `lspci | grep -i nvidia` / `amd`. The `detect_gpu_type` function in
 `lib/common.sh` sets `GPU_TYPE` to `"nvidia"`, `"amd"`, or `"unknown"`.
 
+### CPU Microcode Detection
+
+Independent from GPU detection. `detect_cpu_vendor` in `lib/common.sh` reads
+`vendor_id` from `/proc/cpuinfo` and sets `CPU_VENDOR` (`intel`/`amd`),
+`CPU_MICROCODE_PKG` (`intel-ucode`/`amd-ucode`), and `CPU_MICROCODE_IMG`
+(`intel-ucode.img`/`amd-ucode.img`). Use these for microcode package selection
+and Limine `module_path` — never tie microcode to `GPU_TYPE`.
+
 ## File Organization
 
 Each `.sh` file under `lib/` and `post_install/` is a pure function library -- it

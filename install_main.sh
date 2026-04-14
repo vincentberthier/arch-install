@@ -181,7 +181,8 @@ main() {
 	export HOSTNAME USERNAME USER_EMAIL TIMEZONE LOCALE KEYBOARD KEYBOARD_VARIANT
 	export TARGET_DISK BOOT_SIZE ROOT_SIZE SWAP_SIZE FONT_PASSWD
 
-	# Detect GPU type early
+	# Detect hardware early
+	detect_cpu_vendor
 	detect_gpu_type
 
 	prepare_disk

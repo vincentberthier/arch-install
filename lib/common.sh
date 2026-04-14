@@ -58,3 +58,36 @@ detect_gpu_type() {
     fi
     export GPU_TYPE
 }
+
+# Global CPU vendor + microcode variables. Set by detect_cpu_vendor based on
+# /proc/cpuinfo — independent from GPU_TYPE so Intel+AMD or AMD+Nvidia boxes
+# get the right microcode.
+CPU_VENDOR=""
+CPU_MICROCODE_PKG=""
+CPU_MICROCODE_IMG=""
+
+detect_cpu_vendor() {
+    local vendor_id
+    vendor_id="$(awk -F': ' '/^vendor_id/ {print $2; exit}' /proc/cpuinfo)"
+
+    case "$vendor_id" in
+        GenuineIntel)
+            CPU_VENDOR="intel"
+            CPU_MICROCODE_PKG="intel-ucode"
+            CPU_MICROCODE_IMG="intel-ucode.img"
+            print_status "Intel CPU detected"
+            ;;
+        AuthenticAMD)
+            CPU_VENDOR="amd"
+            CPU_MICROCODE_PKG="amd-ucode"
+            CPU_MICROCODE_IMG="amd-ucode.img"
+            print_status "AMD CPU detected"
+            ;;
+        *)
+            print_error "Unknown CPU vendor: ${vendor_id:-<empty>}"
+            exit 1
+            ;;
+    esac
+
+    export CPU_VENDOR CPU_MICROCODE_PKG CPU_MICROCODE_IMG
+}

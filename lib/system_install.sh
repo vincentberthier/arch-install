@@ -16,21 +16,18 @@ install_base_system() {
 	# Get GPU-specific packages
 	local -a gpu_packages
 	local -a lib32_gpu_packages
-	local microcode
 
 	if [[ "$GPU_TYPE" == "nvidia" ]]; then
 		gpu_packages=(nvidia-dkms nvidia-utils nvidia-settings)
 		lib32_gpu_packages=(lib32-nvidia-utils)
-		microcode="intel-ucode"
 	else
 		gpu_packages=(mesa vulkan-radeon xf86-video-amdgpu)
 		lib32_gpu_packages=(lib32-mesa lib32-vulkan-radeon)
-		microcode="amd-ucode"
 	fi
 
 	# Install base packages
 	pacstrap -K /mnt \
-		base base-devel linux-zen linux-zen-headers linux-firmware "$microcode" \
+		base base-devel linux-zen linux-zen-headers linux-firmware "$CPU_MICROCODE_PKG" \
 		btrfs-progs snapper snap-pac \
 		networkmanager bluez bluez-utils inetutils \
 		git chezmoi fish \
