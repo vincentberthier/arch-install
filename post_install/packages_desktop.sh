@@ -18,6 +18,9 @@ install_desktop_packages() {
 		"thunderbird" "discord" "signal-desktop" "telegram-desktop" "element-desktop"
 		"libreoffice-fresh" "obsidian" "qbittorrent" "gwenview" "zathura" "okular"
 		"mpv" "vlc" "gimp" "gimp-plugin-gmic"
+
+		# Moonlight client + mDNS stack for Sunshine discovery
+		"moonlight-qt" "avahi" "nss-mdns"
 	)
 
 	print_status "Installing Desktop packages (${#packages[@]} packages)"
@@ -40,12 +43,25 @@ install_desktop_packages() {
 		"onedrive-abraunegg"          # OneDrive sync backend
 		"whisper.cpp-vulkan"          # Speech-to-text (Vulkan GPU)
 		"whisper.cpp-model-medium.en" # Whisper medium English model
+		"sunshine"                    # Game-streaming host for Moonlight
 	)
 
 	install_aur_packages "desktop" "${aur_packages[@]}"
 
 	# Enable limine-snapper-sync service
 	enable_service "desktop" system limine-snapper-sync.service --now || true
+
+	# avahi for Sunshine/Moonlight mDNS discovery
+	enable_service "desktop" system avahi-daemon.service --now || true
+
+	# Sunshine always-on (headless streaming host). Only on hephaistos: the
+	# user service needs loginctl linger so systemd --user persists without
+	# an interactive login.
+	if should_run_for_host "$HOSTNAME" "hephaistos"; then
+		print_status "Enabling lingering + Sunshine user service for always-on streaming"
+		doas loginctl enable-linger "$USER"
+		enable_service "desktop" user sunshine.service --now || true
+	fi
 
 	# Install problematic AUR packages with PGP issues
 	install_pgp_messed_up_packages
