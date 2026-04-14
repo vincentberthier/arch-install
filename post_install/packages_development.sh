@@ -161,6 +161,13 @@ install_python_packages() {
 install_npm_packages() {
 	print_status "Installing global npm packages"
 
+	# Arch's npm writes global installs to /usr/lib/node_modules, which the
+	# current user cannot write. Point npm at a user-local prefix instead so
+	# binaries land in ~/.local/bin (already on PATH via setup_directories).
+	mkdir -p "$HOME/.local"
+	npm config set prefix "$HOME/.local"
+	export PATH="$HOME/.local/bin:$PATH"
+
 	local npm_packages=(
 		"@anthropic-ai/claude-code" # AI coding assistant
 		"ccstatusline"              # Claude Code status line
