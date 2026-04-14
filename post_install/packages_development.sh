@@ -22,7 +22,7 @@ install_development_packages() {
 
 		# C++ stuff
 		"clang" "lldb" "cmake" "make" "ninja" "zlib" "catch2" "doxygen" "bear" "vcpkg"
-		"cppcheck" "check" "cinclude2dot" "libmilter" "libxml2-legacy"
+		"cppcheck" "check" "libmilter" "libxml2-legacy"
 
 		# LaTeX
 		"texlive-basic" "texlive-latex" "texlive-latexrecommended" "texlive-latexextra"
@@ -122,7 +122,7 @@ install_rust_packages() {
 	local pkg
 	for pkg in "${cargo_packages[@]}"; do
 		print_status "cargo binstall: installing $pkg"
-		if ! cargo binstall --no-confirm "$pkg"; then
+		if ! cargo binstall --no-confirm --disable-strategies compile "$pkg"; then
 			record_failure "cargo-binstall" "$pkg"
 		fi
 	done
