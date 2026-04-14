@@ -36,6 +36,11 @@ install_paru() {
 		makepkg -si --noconfirm --needed
 	)
 
+	# pacman installs paru to /usr/bin/paru, replacing any /usr/local/bin/paru
+	# that bash may have cached earlier in this function via command -v. Drop
+	# the hash table so the next invocation resolves the new path.
+	hash -r
+
 	if ! command -v paru &>/dev/null; then
 		print_error "paru build failed"
 		exit 1
