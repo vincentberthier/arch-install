@@ -11,10 +11,20 @@ Arch Linux installation automation scripts. Pure Bash, no build system, no tests
 
 Two entry points orchestrate modular function libraries:
 
-| Entry point            | Context                 | Privilege                |
-|------------------------|-------------------------|--------------------------|
-| `install_main.sh`      | Live ISO (base install) | Runs as root             |
+| Entry point            | Context                 | Privilege                 |
+| ---------------------- | ----------------------- | ------------------------- |
+| `install_main.sh`      | Live ISO (base install) | Runs as root              |
 | `post_install/main.sh` | Installed system        | Runs as user, uses `doas` |
+| `cleanup.sh`           | Live ISO (recovery)     | Runs as root              |
+
+`cleanup.sh` turns off swap, unmounts `/mnt` recursively, and releases
+holders on an optional target disk. Run it on the live ISO after a failed
+install to reset state before re-running `install_main.sh`:
+
+```bash
+./cleanup.sh              # generic cleanup
+./cleanup.sh /dev/nvme0n1 # also force-unmount partitions and drop dm holders on that disk
+```
 
 `lib/` and `post_install/` files define functions only -- the orchestrators source
 them and call functions in order. No file executes anything at top level.
@@ -25,7 +35,7 @@ There is no build system, no test suite, no CI/CD. Validate scripts with:
 
 ```bash
 # Lint all scripts
-shellcheck install_main.sh lib/*.sh post_install/*.sh
+shellcheck install_main.sh cleanup.sh lib/*.sh post_install/*.sh
 
 # Lint a single script
 shellcheck lib/disk_setup.sh
@@ -59,11 +69,11 @@ print_error   "message"   # [ERROR]   red
 
 ### Variables
 
-| Scope         | Convention        | Example                          |
-|---------------|-------------------|----------------------------------|
-| Global/config | `UPPER_SNAKE_CASE` | `TARGET_DISK`, `GPU_TYPE`       |
-| Local         | `lower_snake_case` | `local mount_opts="..."`        |
-| Constants     | `readonly`         | `readonly SCRIPT_DIR="..."`     |
+| Scope         | Convention         | Example                        |
+| ------------- | ------------------ | ------------------------------ |
+| Global/config | `UPPER_SNAKE_CASE` | `TARGET_DISK`, `GPU_TYPE`      |
+| Local         | `lower_snake_case` | `local mount_opts="..."`       |
+| Constants     | `readonly`         | `readonly SCRIPT_DIR="..."`    |
 | Associative   | `declare -A`       | `declare -A SUBVOLS=([k]="v")` |
 
 ### Script Path Resolution
@@ -105,11 +115,11 @@ Beyond what the `bash-coding` skill prescribes, this project uses three tiers:
 
 ### Heredocs
 
-| Syntax                    | When to use                                      |
-|---------------------------|--------------------------------------------------|
-| `<< 'EOF'`               | Config files that must be literal (no expansion) |
-| `<< EOF`                  | Templates needing variable interpolation         |
-| Nested in `arch-chroot`  | Base install in-chroot operations                |
+| Syntax                  | When to use                                      |
+| ----------------------- | ------------------------------------------------ |
+| `<< 'EOF'`              | Config files that must be literal (no expansion) |
+| `<< EOF`                | Templates needing variable interpolation         |
+| Nested in `arch-chroot` | Base install in-chroot operations                |
 
 Escape `$` as `\$` inside unquoted heredocs when you need a literal dollar sign.
 
