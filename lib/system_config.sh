@@ -216,11 +216,12 @@ table inet filter {
         ip protocol icmp accept
         ip6 nexthdr icmpv6 accept
 
-        # Allow DHCP on libvirt bridge (virbr0)
-        iif "virbr0" udp dport { 67, 68 } accept
+        # Allow DHCP on libvirt bridge (virbr0) — iifname tolerates the
+        # interface being absent at load time (libvirt not yet started).
+        iifname "virbr0" udp dport { 67, 68 } accept
 
         # Allow SMB on libvirt bridge (virbr0)
-        iif "virbr0" tcp dport 445 accept
+        iifname "virbr0" tcp dport 445 accept
 
         # SSH access
         tcp dport \$SSH_PORT ct state new accept
@@ -280,8 +281,8 @@ table inet filter {
         ct state established,related accept
 
         # Allow forwarding to/from libvirt bridge (virbr0)
-        iif "virbr0" accept
-        oif "virbr0" accept
+        iifname "virbr0" accept
+        oifname "virbr0" accept
     }
 
     chain output {
