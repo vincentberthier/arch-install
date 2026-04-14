@@ -8,23 +8,38 @@ update_system() {
 }
 
 install_paru() {
-	if command -v paru &>/dev/null; then
+	# Verify paru not only exists but actually runs. The pre-compiled binary
+	# from upstream GitHub releases is frequently out of sync with Arch's
+	# libalpm soname (.so.15 vs .so.16), so a stale install can be "present"
+	# but broken after `pacman -Syu`.
+	if command -v paru &>/dev/null && paru --version &>/dev/null; then
 		print_success "paru already installed"
 		return
 	fi
 
-	print_status "Installing paru from pre-compiled binary"
+	if command -v paru &>/dev/null; then
+		print_warning "paru is installed but not runnable (likely libalpm soname mismatch); rebuilding"
+		doas rm -f /usr/local/bin/paru
+		doas pacman -Rns --noconfirm paru paru-bin 2>/dev/null || true
+	fi
 
-	# Download and install in a subshell to avoid changing CWD
+	print_status "Building paru from the AUR against the current libalpm"
+
+	local build_dir
+	build_dir="$(mktemp -d)"
+	# shellcheck disable=SC2064
+	trap "rm -rf '${build_dir}'" RETURN
+
+	git clone --depth 1 https://aur.archlinux.org/paru.git "${build_dir}/paru"
 	(
-		cd /tmp || exit 1
-		url="$(curl -s https://api.github.com/repos/Morganamilo/paru/releases/latest |
-			grep "browser_download_url.*x86_64.*tar.zst" | cut -d '"' -f 4)"
-		curl -L -o paru.tar.zst "$url"
-		tar -xf paru.tar.zst
-		doas mv paru /usr/local/bin/
-		chmod +x /usr/local/bin/paru
+		cd "${build_dir}/paru" || exit 1
+		makepkg -si --noconfirm --needed
 	)
+
+	if ! command -v paru &>/dev/null; then
+		print_error "paru build failed"
+		exit 1
+	fi
 
 	paru -Sy --noconfirm zsa-wally-cli
 
