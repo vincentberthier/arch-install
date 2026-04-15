@@ -232,7 +232,8 @@ if ! ssh "$HOST" /usr/local/bin/start-streaming; then
 fi
 
 notify "Launching Moonlight"
-exec moonlight stream "$HOST" "$APP"
+setsid --fork moonlight stream "$HOST" "$APP" \
+    >/dev/null 2>&1 </dev/null
 CLIENT_EOF
 	doas chmod +x /usr/local/bin/stream-hephaistos
 
