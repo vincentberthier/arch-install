@@ -113,6 +113,15 @@ UINPUT_EOF
 	sunshine_bin="$(readlink -f "$(command -v sunshine)")"
 	doas setcap 'cap_sys_admin,cap_sys_nice+p' "$sunshine_bin"
 
+	# vkms (virtual KMS) gives niri a connected virtual output on a headless
+	# host. Without it niri enumerates zero outputs and sunshine finds no
+	# monitor to capture — every encoder probe fails. Load at boot so the
+	# streaming session launcher doesn't need root to modprobe.
+	print_status "Enabling vkms for headless virtual display"
+	doas tee /etc/modules-load.d/vkms.conf >/dev/null <<'VKMS_EOF'
+vkms
+VKMS_EOF
+
 	# Disable SDDM: hephaistos is headless, no one ever physically logs in.
 	# Fall back to multi-user.target so boot lands on a TTY prompt nobody
 	# touches — SSH becomes the only real entry point.
@@ -121,55 +130,50 @@ UINPUT_EOF
 	doas systemctl set-default multi-user.target
 
 	# Streaming session launcher — started on demand via SSH from a client.
-	# setsid + nohup + /dev/null redirects fully detach niri and sunshine
-	# from the SSH session so they survive the ssh disconnect.
+	# Drives everything through the systemd user manager: niri.service runs
+	# the compositor, graphical-session.target pulls up sunshine.service
+	# (WantedBy=graphical-session.target) and xdg-desktop-portal-gnome
+	# (Requisite=graphical-session.target).
 	doas tee /usr/local/bin/start-streaming >/dev/null <<'STREAM_EOF'
 #!/usr/bin/env bash
-# Launch a headless niri + sunshine session. Idempotent: a second
-# invocation while sunshine is already running is a no-op.
+# Launch the headless niri + sunshine session. Idempotent.
 set -euo pipefail
 
-LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/streaming"
-mkdir -p "$LOG_DIR"
-
-if pgrep -u "$USER" -x sunshine >/dev/null 2>&1; then
+if systemctl --user is-active --quiet sunshine.service; then
     echo "sunshine already running"
     exit 0
 fi
 
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 mkdir -p "$XDG_RUNTIME_DIR"
+export XDG_CURRENT_DESKTOP=niri
+export XDG_SESSION_TYPE=wayland
 
-# Start niri fully detached. No --session flag: we don't want the systemd
-# graphical-session.target dance, just a bare compositor.
-setsid --fork nohup niri \
-    >"$LOG_DIR/niri.log" 2>&1 </dev/null
+systemctl --user reset-failed 2>/dev/null || true
 
-# Wait for niri's wayland socket to appear.
-WAYLAND_DISPLAY=""
-for _ in $(seq 1 50); do
-    for sock in "$XDG_RUNTIME_DIR"/wayland-*; do
-        if [[ -S "$sock" && "$sock" != *.lock ]]; then
-            WAYLAND_DISPLAY="${sock##*/}"
-            break 2
-        fi
-    done
-    sleep 0.1
-done
+# Seed the user manager + D-Bus activation env with the compositor identity
+# before anything D-Bus activates xdg-desktop-portal. The portal picks a
+# backend based on XDG_CURRENT_DESKTOP at first activation and caches that
+# choice — an SSH login had it empty, so the portal latched onto the gtk
+# fallback (no ScreenCast) until we re-seed.
+systemctl --user import-environment XDG_RUNTIME_DIR XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
+dbus-update-activation-environment --systemd XDG_RUNTIME_DIR XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
 
-if [[ -z "$WAYLAND_DISPLAY" ]]; then
-    echo "niri wayland socket did not appear" >&2
-    exit 1
-fi
+# Stop any stale portal state from the empty-env login so the next bus
+# activation re-reads niri-portals.conf and picks xdg-desktop-portal-gnome.
+systemctl --user stop \
+    xdg-desktop-portal.service \
+    xdg-desktop-portal-gtk.service \
+    xdg-desktop-portal-gnome.service 2>/dev/null || true
+pkill -u "$USER" -x xdg-desktop-por 2>/dev/null || true
 
-export WAYLAND_DISPLAY
+# niri.service is Type=notify + BindsTo=graphical-session.target, so
+# starting it activates the target, which in turn pulls up sunshine.service.
+# We still start sunshine.service explicitly so this script waits for it
+# to be Active before returning.
+systemctl --user start niri.service sunshine.service
 
-setsid --fork nohup env WAYLAND_DISPLAY="$WAYLAND_DISPLAY" sunshine \
-    >"$LOG_DIR/sunshine.log" 2>&1 </dev/null
-
-# Give sunshine a beat to bind its ports before the caller tries to connect.
-sleep 2
-echo "streaming session up (WAYLAND_DISPLAY=$WAYLAND_DISPLAY)"
+echo "streaming session up"
 STREAM_EOF
 	doas chmod +x /usr/local/bin/start-streaming
 
@@ -177,8 +181,7 @@ STREAM_EOF
 #!/usr/bin/env bash
 # Tear down the headless streaming session cleanly.
 set -euo pipefail
-pkill -u "$USER" -x sunshine || true
-pkill -u "$USER" -x niri || true
+systemctl --user stop sunshine.service niri.service 2>/dev/null || true
 echo "streaming session stopped"
 STOP_EOF
 	doas chmod +x /usr/local/bin/stop-streaming
