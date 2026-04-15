@@ -106,7 +106,12 @@ UINPUT_EOF
 	doas udevadm control --reload
 	doas udevadm trigger
 	doas usermod -a -G input "$USER"
-	doas setcap 'cap_sys_admin,cap_sys_nice+p' /usr/bin/sunshine
+	# The AUR package installs a versioned binary (e.g. /usr/bin/sunshine-YYYY.MM.DD…)
+	# and symlinks /usr/bin/sunshine to it. setcap refuses symlinks, so
+	# resolve to the real path; every upgrade bumps the versioned filename.
+	local sunshine_bin
+	sunshine_bin="$(readlink -f "$(command -v sunshine)")"
+	doas setcap 'cap_sys_admin,cap_sys_nice+p' "$sunshine_bin"
 
 	# Disable SDDM: hephaistos is headless, no one ever physically logs in.
 	# Fall back to multi-user.target so boot lands on a TTY prompt nobody
