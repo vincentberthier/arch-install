@@ -221,7 +221,7 @@ if ! ssh_ready; then
             exit 1
         fi
         sleep 1
-        ((waited++))
+        waited=$((waited + 1))
     done
 fi
 
