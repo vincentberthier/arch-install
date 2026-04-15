@@ -94,6 +94,20 @@ setup_streaming_host() {
 	enable_service "streaming-host" system seatd.service --now || true
 	doas usermod -a -G seat "$USER"
 
+	# Sunshine injects remote keyboard/mouse/gamepad events via /dev/uinput,
+	# which needs: (1) DAC access — udev rule grants group 'input' 0660,
+	# (2) CAP_SYS_ADMIN for the UI_* ioctls, (3) CAP_SYS_NICE so sunshine's
+	# nice -10/-15 priority raises don't fail. The setcap is lost on every
+	# paru rebuild of sunshine, so this function must re-run on upgrades.
+	print_status "Configuring uinput access for sunshine"
+	doas tee /etc/udev/rules.d/85-sunshine.rules >/dev/null <<'UINPUT_EOF'
+KERNEL=="uinput", SUBSYSTEM=="misc", OPTIONS+="static_node=uinput", TAG+="uaccess", OPTIONS+="mode=0660", GROUP="input"
+UINPUT_EOF
+	doas udevadm control --reload
+	doas udevadm trigger
+	doas usermod -a -G input "$USER"
+	doas setcap 'cap_sys_admin,cap_sys_nice+p' /usr/bin/sunshine
+
 	# Disable SDDM: hephaistos is headless, no one ever physically logs in.
 	# Fall back to multi-user.target so boot lands on a TTY prompt nobody
 	# touches — SSH becomes the only real entry point.
