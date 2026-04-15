@@ -46,7 +46,6 @@ install_desktop_packages() {
 		"bibata-cursor-theme-bin"     # Cursor theme
 		"gimp-plugin-resynthesizer"   # GIMP plugin
 		"matugen-git"                 # Material You color generation
-		"noctalia"                    # Noctalia CLI launcher (`noctalia run`)
 		"noctalia-shell"              # Niri theme integration (Quickshell config)
 		"brave-bin"                   # Fallback browser
 		"onedrive-abraunegg"          # OneDrive sync backend
