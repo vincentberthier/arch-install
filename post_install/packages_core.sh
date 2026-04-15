@@ -59,7 +59,7 @@ install_core_packages() {
 		# Essential CLI tools
 		"starship" "eza" "bat" "fd" "ripgrep" "sd" "dust" "duf" "btop" "zoxide" "fzf"
 		"git" "difftastic" "meld" "git-delta"
-		"tree" "unzip" "wget" "curl" "rsync" "fastfetch" "tldr"
+		"tree" "unzip" "wget" "curl" "rsync" "sshfs" "fastfetch" "tldr"
 		"yazi" "rclone" "tinyxxd"
 
 		# Shell tooling
