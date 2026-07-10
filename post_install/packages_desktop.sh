@@ -4,9 +4,12 @@
 install_desktop_packages() {
 	local packages=(
 		# Niri compositor stack
-		"niri" "fuzzel" "xwayland-satellite" "cliphist" "wlsunset" "mako" "cava"
+		"niri" "fuzzel" "xwayland-satellite" "cliphist" "wlsunset"
 		"xdg-desktop-portal" "xdg-desktop-portal-gnome"
 		"wl-clipboard" "wtype" "grim" "slurp" "labwc"
+		# Were transitive deps of noctalia-shell; noctalia v5 does not pull them in.
+		# brightnessctl backs the niri XF86MonBrightness binds, wlr-randr the screen-off.
+		"brightnessctl" "wlr-randr"
 		"qt5-graphicaleffects" "qt5-svg" "qt5-quickcontrols2"
 		"thunar" "thunar-volman" "gvfs" "gvfs-mtp" "gvfs-smb"
 
@@ -45,8 +48,7 @@ install_desktop_packages() {
 		"wleave-git"                  # Logout utils
 		"bibata-cursor-theme-bin"     # Cursor theme
 		"gimp-plugin-resynthesizer"   # GIMP plugin
-		"matugen-git"                 # Material You color generation
-		"noctalia-shell"              # Niri theme integration (Quickshell config)
+		"noctalia"                    # Niri shell/bar (native v5; config is TOML via chezmoi)
 		"brave-bin"                   # Fallback browser
 		"onedrive-abraunegg"          # OneDrive sync backend
 		"whisper.cpp-vulkan"          # Speech-to-text (Vulkan GPU)
