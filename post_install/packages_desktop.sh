@@ -13,6 +13,10 @@ install_desktop_packages() {
 		"qt5-graphicaleffects" "qt5-svg" "qt5-quickcontrols2"
 		"thunar" "thunar-volman" "gvfs" "gvfs-mtp" "gvfs-smb"
 
+		# Dank Mono and the nerd fonts have no CJK coverage: kanji/kana/hanzi
+		# render as placeholder boxes in wezterm and in notification bodies.
+		"noto-fonts-cjk"
+
 		# Plasma desktop (fallback)
 		"plasma-meta" "kde-applications-meta"
 		"xdg-desktop-portal-kde"
