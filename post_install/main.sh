@@ -75,7 +75,6 @@ main() {
 	setup_shell_environment
 	setup_systemd_services
 	setup_virtualization
-	setup_duplicacy_config
 	setup_duplicacy
 
 	# Phase 7: GPU-specific setup

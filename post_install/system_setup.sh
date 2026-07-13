@@ -109,72 +109,18 @@ setup_duplicacy() {
 		paru -S --noconfirm duplicacy rclone
 	fi
 
-	SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
-	mkdir -p "$SYSTEMD_USER_DIR"
+	# The units and the backup/prune/check scripts are chezmoi-managed
+	# (private_dot_config/systemd/user and private_dot_config/duplicacy), so
+	# every machine picks up changes with a plain `chezmoi apply` instead of a
+	# re-run of the installer. chezmoi's run_onchange hook does the
+	# daemon-reload and enables the timers.
+	print_status "Applying the chezmoi-managed duplicacy configuration"
+	chezmoi apply "$HOME/.config/duplicacy" "$HOME/.config/systemd/user" "$HOME/.local/bin"
 
-	XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-	XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
-
-	print_status "Creating systemd service files"
-	cat >"$SYSTEMD_USER_DIR/duplicacy-backup.service" <<'EOF'
-[Unit]
-Description=Duplicacy backups
-
-[Service]
-Type=simple
-ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"; export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"; /bin/bash "$XDG_CONFIG_HOME/duplicacy/backup.sh"'
-
-[Install]
-WantedBy=default.target
-EOF
-
-	# Create duplicacy-prune.service
-	cat >"$SYSTEMD_USER_DIR/duplicacy-prune.service" <<'EOF'
-[Unit]
-Description=Duplicacy prune all backups
-
-[Service]
-Type=simple
-ExecStart=/bin/bash -c 'set -eou pipefail; export HOME="%h"; export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"; export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"; /bin/bash "$XDG_CONFIG_HOME/duplicacy/prune.sh"'
-
-[Install]
-WantedBy=default.target
-EOF
-
-	# Create duplicacy-backup.timer
-	cat >"$SYSTEMD_USER_DIR/duplicacy-backup.timer" <<'EOF'
-[Unit]
-Description=Timer for duplicacy backups
-
-[Timer]
-Unit=duplicacy-backup.service
-OnBootSec=15m
-OnUnitActiveSec=60m
-
-[Install]
-WantedBy=timers.target
-EOF
-
-	# Create duplicacy-prune.timer
-	cat >"$SYSTEMD_USER_DIR/duplicacy-prune.timer" <<'EOF'
-[Unit]
-Description=Timer for duplicacy pruning
-
-[Timer]
-Unit=duplicacy-prune.service
-OnBootSec=120m
-
-[Install]
-WantedBy=timers.target
-EOF
-
-	systemctl --user daemon-reload
-	print_status "Enabling and starting services"
-
-	enable_service "duplicacy" user duplicacy-backup.service || true
-	enable_service "duplicacy" user duplicacy-prune.service || true
-	enable_service "duplicacy" user duplicacy-backup.timer --now || true
-	enable_service "duplicacy" user duplicacy-prune.timer --now || true
+	# Repository setup: writes .duplicacy/preferences for each backed-up folder
+	# and registers the local Aegis storage when that drive is connected.
+	print_status "Configuring duplicacy repositories"
+	"$HOME/.local/bin/duplicacy-setup" || print_error "duplicacy-setup reported errors"
 }
 
 setup_virtualization() {
