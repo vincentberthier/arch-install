@@ -87,6 +87,15 @@ main() {
 		install_embedded_packages
 	fi
 
+	# Phase 8b: Code documentation projected into the Obsidian vault.
+	# Not hephaistos: it is where the documentation is written, never where it
+	# is read. It still needs unison for the other end of the sync, which is why
+	# unison and inotify-tools sit in install_development_packages rather than
+	# here -- all three hosts get them, only these two project a vault.
+	if should_run_for_host "$HOSTNAME" "athena" "gaia"; then
+		setup_vault_code
+	fi
+
 	# Phase 9: Astro tools (gaia only)
 	if should_run_for_host "$HOSTNAME" "gaia"; then
 		install_astro_tools

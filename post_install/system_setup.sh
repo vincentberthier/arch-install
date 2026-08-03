@@ -123,6 +123,28 @@ setup_duplicacy() {
 	"$HOME/.local/bin/duplicacy-setup" || print_error "duplicacy-setup reported errors"
 }
 
+setup_vault_code() {
+	# Projects the documentation living in code repositories into the Obsidian
+	# vault, as directory symlinks. Hosts that have code project their own: the
+	# vault's `Code` folders are derived content and are never synced between
+	# machines. Design and rationale live in the vault itself, at
+	# Notes/Permanentes/"Intégration du code dans le Vault.md".
+	#
+	# unison keeps the agent scratch (.claude/plans, brainstorm, debug) in step
+	# with hephaistos. It is needed on BOTH ends and the versions must match --
+	# unison refuses to talk to a different major version. unison-fsmonitor
+	# ships with it and is what makes the sync event-driven rather than timed.
+	install_pacman_packages "vault-code" unison inotify-tools
+
+	# The script, the manifest and the units are chezmoi-managed
+	# (private_dot_local/bin, private_dot_config/vault-code and
+	# private_dot_config/systemd/user), so changes reach every machine with a
+	# plain `chezmoi apply`. The run_onchange hook generates the unison profile
+	# from the manifest, then reloads and enables the units.
+	print_status "Applying the chezmoi-managed vault-code configuration"
+	chezmoi apply "$HOME/.local/bin" "$HOME/.config/vault-code" "$HOME/.config/systemd/user"
+}
+
 setup_virtualization() {
 	install_pacman_packages "virtualization" qemu-full virt-manager libvirt dnsmasq iproute2 swtpm
 	enable_service "virtualization" system libvirtd --now || true

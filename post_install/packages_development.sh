@@ -12,6 +12,12 @@ install_development_packages() {
 		"perf" "kcachegrind" "hyperfine" "valgrind" "gdb" "cgdb"
 		"strace" "ltrace" "mermaid-cli"
 
+		# Both ends of the vault-code scratch sync. hephaistos needs these even
+		# though it never projects anything into a vault: unison must be present
+		# on both sides, at a matching major version, and unison-fsmonitor (which
+		# ships with it) is what makes the sync event-driven.
+		"unison" "inotify-tools"
+
 		# Rust stuff
 		"rustup" "rust-analyzer" "llvm"
 		"musl" "rust-musl" "kernel-headers-musl"
