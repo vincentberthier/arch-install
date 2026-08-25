@@ -59,10 +59,15 @@ default_entry: 2
 
 LIMINE_CONFIG_EOF
 
-# Install the Limine UEFI binary in its own directory on the ESP so it
-# does not collide with the firmware fallback path /EFI/BOOT/BOOTX64.EFI.
-mkdir -p /boot/EFI/limine
-cp /usr/share/limine/BOOTX64.EFI /boot/EFI/limine/BOOTX64.EFI
+# Deploy the Limine UEFI binary to the exact paths limine-entry-tool owns:
+# EFI/limine/limine_x64.efi is what its 80-limine-efi-deploy.hook refreshes on
+# every limine upgrade, and EFI/BOOT/BOOTX64.EFI is the removable fallback the
+# firmware boots with no NVRAM entry at all. Any other filename here becomes a
+# third copy that no hook ever updates, drifting out of step with the
+# limine.conf that limine-snapper-sync keeps rewriting.
+mkdir -p /boot/EFI/limine /boot/EFI/BOOT
+cp /usr/share/limine/BOOTX64.EFI /boot/EFI/limine/limine_x64.efi
+cp /usr/share/limine/BOOTX64.EFI /boot/EFI/BOOT/BOOTX64.EFI
 
 # Drop any stale Limine NVRAM entries from a previous failed install so
 # re-runs do not accumulate duplicates.
@@ -77,7 +82,7 @@ efibootmgr --quiet --create \\
     --disk "${TARGET_DISK}" \\
     --part 1 \\
     --label "Limine" \\
-    --loader '\\EFI\\limine\\BOOTX64.EFI'
+    --loader '\\EFI\\limine\\limine_x64.efi'
 LIMINE_EOF
 
     cp "${SCRIPT_DIR}/arch_wallpaper.png" /mnt/boot/wallpaper.png

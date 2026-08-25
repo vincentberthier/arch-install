@@ -56,15 +56,26 @@ install_core_packages() {
 
 		# Essential CLI tools
 		"starship" "eza" "bat" "fd" "ripgrep" "sd" "dust" "duf" "btop" "zoxide" "fzf"
-		"git" "difftastic" "meld" "git-delta"
+		"git" "difftastic" "meld" "git-delta" "github-cli"
 		"tree" "unzip" "wget" "curl" "rsync" "sshfs" "fastfetch" "tldr"
-		"yazi" "rclone" "tinyxxd"
+		"yazi" "rclone" "tinyxxd" "chafa" "patchelf" "xclip"
+
+		# Safe rm replacement. trash-cli, not trashy: the verbs are separate
+		# binaries (trash-put, trash-restore, trash-list) and that is what the
+		# shell aliases and the documented workflow expect.
+		"trash-cli"
 
 		# Shell tooling
-		"shellcheck" "shfmt"
+		"shellcheck" "shfmt" "dprint"
 
 		# Security and keys
-		"keychain" "gnupg" "pass"
+		"keychain" "gnupg" "pass" "age" "yara"
+
+		# Backup
+		"borg" "restic"
+
+		# Documents and text
+		"typst" "pandoc-cli"
 
 		# Terminal
 		"kitty"
@@ -79,7 +90,10 @@ install_core_packages() {
 		"dosfstools" "ntfs-3g" "xfsprogs"
 
 		# Networking / sysadmin
-		"nmap" "iperf3" "sshpass" "screen" "waypipe"
+		"nmap" "iperf3" "sshpass" "screen" "waypipe" "tcpdump" "wireshark-cli"
+
+		# Filesystem support beyond the basics
+		"exfatprogs"
 	)
 
 	# Add GPU-specific core packages
@@ -98,11 +112,11 @@ install_core_packages() {
 	# Install essential AUR packages
 	local aur_packages=(
 		"yay"           # AUR helper (fallback)
-		"dprint-bin"    # Formatter
 		"watchman-bin"  # Inotify-like
 		"bluetuith-bin" # TUI bluetooth manager
 		"anydesk-bin"   # Remote desktop
-		"trashy-bin"    # Safe rm replacement
+		"hadolint-bin"  # Dockerfile linter
+		"scc-bin"       # Source code line counter
 
 		# ZSA keyboard flasher. Must go through install_aur_packages: it was a
 		# bare `paru -S` call, and when upstream dropped the package the

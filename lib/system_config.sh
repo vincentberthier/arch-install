@@ -39,11 +39,12 @@ systemctl enable systemd-timesyncd
 systemctl enable reflector.timer
 systemctl enable fstrim.timer
 
-# Create user
-useradd -m -G wheel,audio,video,optical,storage -s /bin/fish "$USERNAME"
+# Create user. uucp carries /dev/ttyUSB* and /dev/ttyACM* access, which the
+# embedded and keyboard-flashing tooling needs. There is deliberately no
+# plugdev here: Arch has no such group, so the usermod was a silent no-op.
+useradd -m -G wheel,audio,video,optical,storage,uucp -s /bin/fish "$USERNAME"
 # Temporary password set to username -- CHANGE AFTER FIRST LOGIN
 echo "$USERNAME:$USERNAME" | chpasswd
-usermod -a -G plugdev "$USERNAME"
 
 # Install and configure doas as primary
 pacman -S --noconfirm opendoas
@@ -115,7 +116,11 @@ configure_openssh() {
 # Install and configure SSH server for remote debugging
 pacman -S --noconfirm openssh
 
-# Jail directory for SFTP
+# Jail directory for SFTP. The sshusers group has to be created first: Arch
+# does not ship one, so the useradd below used to fail outright and leave the
+# sshd_config Match block below matching an account that never existed.
+groupadd -f sshusers
+
 mkdir -p /var/lib/jail
 useradd -G sshusers -s /usr/bin/nologin -d /var/lib/jail sftp_user
 # Temporary password -- CHANGE AFTER FIRST LOGIN

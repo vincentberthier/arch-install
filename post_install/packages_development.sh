@@ -40,17 +40,22 @@ install_development_packages() {
 		"python-numpy" "python-matplotlib" "python-pandas" "python-seaborn"
 		"python-scikit-image" "python-opencv" "python-pillow" "python-requests"
 		"ipython" "python-black" "python-isort" "python-flake8"
-		"python-lsp-server"
+		"python-lsp-server" "mypy" "bandit" "python-docx"
 
 		# Development tools
 		"eslint" "prettier" "bash-language-server" "shfmt" "buf" "yaml-language-server"
 		"typescript-language-server" "cdrtools" "heaptrack"
+		"dockerfile-language-server"
+
+		# Windows cross-compilation toolchain
+		"mingw-w64-gcc" "mingw-w64-headers"
 
 		# Node.js
 		"nodejs" "npm"
 
-		# Modern dev tooling
-		"ast-grep" "just" "ruff" "ty" "uv" "glab"
+		# Modern dev tooling. No glab: every GitLab reachable from these
+		# machines is the Tyrex one, and the tyrex-gitlab CLI owns it.
+		"ast-grep" "just" "ruff" "ty" "uv" "zellij"
 		"cargo-make" "dpkg" "syslinux"
 	)
 
@@ -67,11 +72,10 @@ install_development_packages() {
 	local aur_packages=(
 		"cargo-criterion"              # Rust benchmarks
 		"cargo-mutants"                # Mutation testing
-		"rr"                           # Record and replay debugger
+		"rr-bin"                       # Record and replay debugger
 		"hotspot"                      # GUI for perf
 		"ltex-ls-bin"                  # LS for LaTeX
 		"duplicacy"                    # Backup tool
-		"zellij"                       # Terminal multiplexer
 		"postman-bin"                  # Development
 		"teams-for-linux-bin"          # Work communication
 		"vscode-langservers-extracted" # LS for web stuff
@@ -83,8 +87,6 @@ install_development_packages() {
 		"nodejs-compose-language-service"
 		"onedrivegui"
 		"conan"
-		"mingw-w64-gcc"
-		"mingw-w64-headers"
 		"bindfs"
 		"opencode-bin"  # AI coding assistant
 		"rustrover"     # JetBrains Rust IDE

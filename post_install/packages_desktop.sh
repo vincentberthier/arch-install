@@ -26,8 +26,13 @@ install_desktop_packages() {
 		"libreoffice-fresh" "obsidian" "qbittorrent" "gwenview" "zathura" "okular"
 		"mpv" "vlc" "gimp" "gimp-plugin-gmic"
 
-		# mDNS stack for Sunshine discovery
+		# mDNS: resolves <hostname>.local across the LAN without DNS entries,
+		# and is how Moonlight finds the streaming host.
 		"avahi" "nss-mdns"
+
+		# Speech-to-text. Was whisper.cpp-vulkan from the AUR; that package is
+		# gone and whisper-cpp is in extra at the same upstream version.
+		"whisper-cpp"
 	)
 
 	# Sunshine/Moonlight split: hephaistos hosts the stream (sunshine from AUR),
@@ -52,12 +57,10 @@ install_desktop_packages() {
 		"wleave-git"                  # Logout utils
 		"bibata-cursor-theme-bin"     # Cursor theme
 		"gimp-plugin-resynthesizer"   # GIMP plugin
-		"noctalia"                    # Niri shell/bar (native v5; config is TOML via chezmoi)
+		"noctalia-git"                # Niri shell/bar (v5; config is TOML via chezmoi)
 		"brave-bin"                   # Fallback browser
 		"onedrive-abraunegg"          # OneDrive sync backend
-		"whisper.cpp-vulkan"          # Speech-to-text (Vulkan GPU)
 		"whisper.cpp-model-medium.en" # Whisper medium English model
-		"sunshine"                    # Game-streaming host for Moonlight
 	)
 
 	install_aur_packages "desktop" "${aur_packages[@]}"
