@@ -108,6 +108,36 @@ EOF
 	print_success "System configured with doas"
 }
 
+# Pin the initramfs layout instead of inheriting whatever the mkinitcpio
+# default happens to be. A drop-in is used rather than editing the main file so
+# a mkinitcpio upgrade never leaves a .pacnew to reconcile.
+#
+# The systemd hook replaces base, udev *and* resume: it bundles
+# systemd-hibernate-resume and its generator, which read resume=/resume_offset=
+# from the kernel command line. Adding the udev-era `resume` hook alongside it
+# would be wrong, not merely redundant.
+configure_initramfs() {
+	print_status "Configuring initramfs (systemd hooks, hibernation-capable)"
+
+	local modules=""
+	if gpu_has_vendor nvidia; then
+		# Loading these early keeps the console on the Nvidia KMS driver from
+		# the start rather than flipping modes once userspace comes up.
+		modules="nvidia nvidia_modeset nvidia_uvm nvidia_drm"
+	fi
+
+	mkdir -p /mnt/etc/mkinitcpio.conf.d
+	cat >/mnt/etc/mkinitcpio.conf.d/10-arch-install.conf <<INITRAMFS_EOF
+# Managed by arch-install. Overrides /etc/mkinitcpio.conf.
+MODULES=(${modules})
+HOOKS=(base systemd autodetect microcode modconf kms keyboard sd-vconsole block filesystems fsck)
+INITRAMFS_EOF
+
+	arch-chroot /mnt mkinitcpio -P
+
+	print_success "Initramfs configured"
+}
+
 configure_openssh() {
 	print_status "Configuring OpenSSH"
 

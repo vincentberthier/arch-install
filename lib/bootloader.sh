@@ -14,7 +14,13 @@ EOF
 
     # Configure based on GPU type. Microcode image comes from CPU_MICROCODE_IMG
     # (set by detect_cpu_vendor), independent of the GPU choice.
+    # resume=/resume_offset= point the kernel at the hibernation image in the
+    # btrfs swapfile. systemd-hibernate-resume can also pick the location up
+    # from the HibernateLocation EFI variable, but that is only set while a
+    # hibernation image exists -- the kernel parameters are what make the
+    # setup survive a cleared or unavailable variable.
     local KERNEL_PARAMS="root=LABEL=ARCH rootflags=subvol=@ rw quiet loglevel=3"
+    KERNEL_PARAMS="$KERNEL_PARAMS resume=LABEL=ARCH resume_offset=${SWAP_RESUME_OFFSET}"
     local MICROCODE_IMG="$CPU_MICROCODE_IMG"
 
     if [[ "$GPU_TYPE" == "nvidia" ]]; then
@@ -53,7 +59,7 @@ default_entry: 2
     comment: Arch Linux Fallback (linux-zen)
     protocol: linux
     kernel_path: boot():/vmlinuz-linux-zen
-    kernel_cmdline: root=LABEL=ARCH rootflags=subvol=@ rw
+    kernel_cmdline: root=LABEL=ARCH rootflags=subvol=@ rw resume=LABEL=ARCH resume_offset=${SWAP_RESUME_OFFSET}
     module_path: boot():/${MICROCODE_IMG}
     module_path: boot():/initramfs-linux-zen-fallback.img
 

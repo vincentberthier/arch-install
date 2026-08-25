@@ -4,16 +4,14 @@
 configure_nvidia_system() {
     print_status "Applying Nvidia-specific system configuration"
     
+    # The initramfs MODULES list and the mkinitcpio run live in
+    # configure_initramfs, which owns /etc/mkinitcpio.conf.d and runs after
+    # this function.
     arch-chroot /mnt /bin/bash << 'EOF'
 echo "Configuring Nvidia drivers..."
 
-# Add Nvidia modules to mkinitcpio
-sed -i 's/MODULES=()/MODULES=(nvidia nvidia_modeset nvidia_uvm nvidia_drm)/' /etc/mkinitcpio.conf
 mkdir -p /etc/modprobe.d
 echo "options nvidia-drm modeset=1" | tee /etc/modprobe.d/nvidia-drm.conf
-
-# Regenerate initramfs
-mkinitcpio -P
 
 # Create Nvidia udev rules
 echo 'ACTION=="add", DEVPATH=="/bus/pci/drivers/nvidia", RUN+="/usr/bin/nvidia-modprobe -c0 -u"' > /etc/udev/rules.d/70-nvidia.rules

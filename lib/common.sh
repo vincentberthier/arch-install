@@ -225,6 +225,32 @@ print_failure_summary() {
     echo
 }
 
+# True when this machine is a portable. Decided from hardware, never from a
+# hostname list: a laptop that gets renamed, or a new one, must pick up the
+# power-management and hibernation setup without this file being edited.
+#
+# DMI chassis types 8-10, 14, 30-32 are the portable ones (portable, laptop,
+# notebook, sub-notebook, tablet, convertible, detachable). A battery is the
+# corroborating signal for firmware that reports a useless chassis type.
+is_laptop() {
+    local chassis_type=""
+    if [[ -r /sys/class/dmi/id/chassis_type ]]; then
+        chassis_type="$(< /sys/class/dmi/id/chassis_type)"
+    fi
+
+    case "$chassis_type" in
+        8 | 9 | 10 | 14 | 30 | 31 | 32) return 0 ;;
+    esac
+
+    # compgen returns non-zero when nothing matches, which is the answer we
+    # want rather than an error under set -e.
+    if compgen -G '/sys/class/power_supply/BAT*' >/dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
 # Global CPU vendor + microcode variables. Set by detect_cpu_vendor based on
 # /proc/cpuinfo — independent from GPU_TYPE so Intel+AMD or AMD+Nvidia boxes
 # get the right microcode.

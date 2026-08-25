@@ -25,11 +25,37 @@ LOCALE="fr_FR.UTF-8"
 KEYBOARD="fr"
 KEYBOARD_VARIANT="bepo"
 
-# Disk configuration
+# Disk configuration. SWAP_SIZE is computed by compute_swap_size from the
+# amount of RAM this machine actually has -- hibernation needs the whole of
+# RAM to fit in swap, and a hardcoded figure silently breaks it on the next
+# machine with more memory.
 TARGET_DISK=""
 BOOT_SIZE="2G"
 ROOT_SIZE="250G"
-SWAP_SIZE="16G"
+SWAP_SIZE=""
+
+compute_swap_size() {
+	local mem_kib mem_gib swap_gib
+	mem_kib="$(awk '/^MemTotal:/ {print $2; exit}' /proc/meminfo)"
+
+	if [[ -z "$mem_kib" ]]; then
+		print_error "Could not read MemTotal from /proc/meminfo"
+		exit 1
+	fi
+
+	# Round RAM up to the next whole GiB, then add a 2 GiB margin: the
+	# hibernation image is RAM-sized in the worst case and the kernel wants
+	# headroom on top of it.
+	mem_gib=$(((mem_kib + 1048575) / 1048576))
+	swap_gib=$((mem_gib + 2))
+
+	if ((swap_gib < 8)); then
+		swap_gib=8
+	fi
+
+	SWAP_SIZE="${swap_gib}G"
+	print_status "RAM is ${mem_gib}G, sizing swap at ${SWAP_SIZE} for hibernation"
+}
 
 # Subvolume configuration
 declare -A SUBVOLS=(
@@ -184,6 +210,11 @@ main() {
 	# Detect hardware early
 	detect_cpu_vendor
 	detect_gpu_type
+	compute_swap_size
+
+	if is_laptop; then
+		print_status "Portable chassis detected"
+	fi
 
 	prepare_disk
 	format_partitions
@@ -191,6 +222,7 @@ main() {
 	mount_filesystem
 	install_base_system
 	configure_system
+	configure_initramfs
 	install_fonts
 	configure_openssh
 	configure_firewall

@@ -40,7 +40,8 @@ main() {
 		exit 1
 	fi
 
-	# Detect GPU type
+	# Detect hardware
+	detect_cpu_vendor
 	detect_gpu_type
 
 	print_status "Starting package installation process..."
@@ -52,6 +53,11 @@ main() {
 
 	# Phase 2: Core packages (all hosts)
 	install_core_packages
+
+	# Phase 2b: Power management, on portables only. Hardware-gated.
+	if is_laptop; then
+		install_laptop_packages
+	fi
 
 	# Phase 3: Desktop packages (desktop hosts only)
 	# Example: only install on specific hosts

@@ -128,3 +128,45 @@ install_core_packages() {
 
 	print_success "Core packages installation completed"
 }
+
+# Power management and firmware tooling for portables. Gated on is_laptop, not
+# on a hostname list, so a new machine gets it without editing this file.
+#
+# power-profiles-daemon rather than tlp: the two conflict, and it is the one
+# the desktop shell's power widget talks to over D-Bus.
+install_laptop_packages() {
+	print_status "Installing laptop power-management packages"
+
+	local packages=(
+		"power-profiles-daemon" # Balanced/performance/saver profiles over D-Bus
+		"upower"                # Battery state for the shell
+		"acpi"                  # Battery and thermal state from the CLI
+		"powertop"              # Power draw diagnostics
+		"fwupd"                 # Firmware updates (LVFS)
+		"brightnessctl"         # Backlight control for the niri binds
+	)
+
+	# thermald only understands Intel's thermal interfaces.
+	if [[ "$CPU_VENDOR" == "intel" ]]; then
+		packages+=("thermald")
+	fi
+
+	# Hands the compositor a way to pick which GPU an application runs on.
+	if ((${#GPU_VENDORS[@]} > 1)); then
+		print_status "Hybrid graphics detected, adding switcheroo-control"
+		packages+=("switcheroo-control")
+	fi
+
+	install_pacman_packages "laptop" "${packages[@]}"
+
+	enable_service "laptop" system power-profiles-daemon.service --now || true
+	enable_service "laptop" system fwupd.service || true
+	if [[ "$CPU_VENDOR" == "intel" ]]; then
+		enable_service "laptop" system thermald.service --now || true
+	fi
+	if ((${#GPU_VENDORS[@]} > 1)); then
+		enable_service "laptop" system switcheroo-control.service --now || true
+	fi
+
+	print_success "Laptop packages installation completed"
+}

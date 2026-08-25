@@ -95,5 +95,17 @@ mount_filesystem() {
 	btrfs filesystem mkswapfile --size "$SWAP_SIZE" /mnt/swap/swapfile
 	swapon /mnt/swap/swapfile
 
+	# Physical offset of the swapfile's first page, which the kernel needs as
+	# resume_offset= to find the hibernation image. It can only be read while
+	# the filesystem is mounted and the file exists, so capture it here and let
+	# install_limine consume it.
+	SWAP_RESUME_OFFSET="$(btrfs inspect-internal map-swapfile -r /mnt/swap/swapfile)"
+	if [[ -z "$SWAP_RESUME_OFFSET" ]]; then
+		print_error "Could not determine the swapfile resume offset"
+		exit 1
+	fi
+	export SWAP_RESUME_OFFSET
+	print_status "Swapfile resume offset: ${SWAP_RESUME_OFFSET}"
+
 	print_success "Filesystem mounted"
 }
