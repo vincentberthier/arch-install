@@ -350,13 +350,15 @@ Scale=1
 DateTimeSpacing=0
 SDDM_EOF
 
-	# Use the Plasma Wayland compositor directly
-	doas tee /usr/local/bin/sddm-labwc <<'EOF'
+	# Greeter compositor. The layout order matches the installed system's --
+	# both come from detect_keyboard_layout -- so the password typed at the
+	# greeter uses the same keys as the one set on the machine.
+	doas tee /usr/local/bin/sddm-labwc <<EOF
 #!/usr/bin/env bash
 
-export XKB_DEFAULT_LAYOUT="fr,fr,us"
-export XKB_DEFAULT_VARIANT="bepo,,"
-export XKB_DEFAULT_OPTIONS="grp:alt_shift_toggle"
+export XKB_DEFAULT_LAYOUT="${KEYBOARD_LAYOUTS}"
+export XKB_DEFAULT_VARIANT="${KEYBOARD_VARIANTS}"
+export XKB_DEFAULT_OPTIONS="${KEYBOARD_OPTIONS}"
 exec labwc
 EOF
 	doas chmod +x /usr/local/bin/sddm-labwc

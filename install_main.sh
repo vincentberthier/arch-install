@@ -22,8 +22,8 @@ USERNAME="vincent"
 USER_EMAIL="vincent.berthier@posteo.org"
 TIMEZONE="Europe/Paris"
 LOCALE="fr_FR.UTF-8"
-KEYBOARD="fr"
-KEYBOARD_VARIANT="bepo"
+# Keyboard layout order comes from detect_keyboard_layout in lib/common.sh,
+# which derives it from the chassis.
 
 # Disk configuration. SWAP_SIZE is computed by compute_swap_size from the
 # amount of RAM this machine actually has -- hibernation needs the whole of
@@ -131,7 +131,8 @@ get_user_input() {
 	echo "Username: $USERNAME"
 	echo "Timezone: $TIMEZONE"
 	echo "Locale: $LOCALE"
-	echo "Keyboard: $KEYBOARD ($KEYBOARD_VARIANT)"
+	echo "Keyboard: ${KEYBOARD_LAYOUTS} / ${KEYBOARD_VARIANTS} (console: ${CONSOLE_KEYMAP})"
+	echo "Swap: $SWAP_SIZE"
 	echo
 	print_warning "This will COMPLETELY ERASE $TARGET_DISK"
 	read -rp "Continue? (yes/no): " confirm
@@ -201,20 +202,19 @@ main() {
 	check_uefi
 	check_internet
 	check_secure_boot
+
+	# Detect hardware before asking anything, so the confirmation summary
+	# describes what will actually be installed.
+	detect_cpu_vendor
+	detect_gpu_type
+	detect_keyboard_layout
+	compute_swap_size
+
 	get_user_input
 
 	# Export variables for use in sourced scripts
-	export HOSTNAME USERNAME USER_EMAIL TIMEZONE LOCALE KEYBOARD KEYBOARD_VARIANT
+	export HOSTNAME USERNAME USER_EMAIL TIMEZONE LOCALE
 	export TARGET_DISK BOOT_SIZE ROOT_SIZE SWAP_SIZE FONT_PASSWD
-
-	# Detect hardware early
-	detect_cpu_vendor
-	detect_gpu_type
-	compute_swap_size
-
-	if is_laptop; then
-		print_status "Portable chassis detected"
-	fi
 
 	prepare_disk
 	format_partitions

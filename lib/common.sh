@@ -251,6 +251,36 @@ is_laptop() {
     return 1
 }
 
+# Keyboard layout order. Group 0 is what a session starts in; the other groups
+# are reachable through the layout-switch bind. Derived from the chassis rather
+# than a hostname list, so a new machine needs no edit here.
+#
+# Portables lead with plain azerty because the built-in keyboard is engraved
+# azerty, and because anything that latches the active group at start-up gets a
+# layout that exists -- Wine and Proton have no bepo layout at all and
+# synthesise a broken one. Desktops drive an external board already flashed for
+# bepo, so bepo leads there.
+KEYBOARD_LAYOUTS=""
+KEYBOARD_VARIANTS=""
+KEYBOARD_OPTIONS="grp:alt_shift_toggle"
+CONSOLE_KEYMAP=""
+
+detect_keyboard_layout() {
+    if is_laptop; then
+        KEYBOARD_LAYOUTS="fr,fr,us"
+        KEYBOARD_VARIANTS=",bepo,"
+        CONSOLE_KEYMAP="fr"
+        print_status "Keyboard: azerty default, bepo second (built-in keyboard)"
+    else
+        KEYBOARD_LAYOUTS="fr,fr,us"
+        KEYBOARD_VARIANTS="bepo,,"
+        CONSOLE_KEYMAP="fr-bepo"
+        print_status "Keyboard: bepo default, azerty second (external board)"
+    fi
+
+    export KEYBOARD_LAYOUTS KEYBOARD_VARIANTS KEYBOARD_OPTIONS CONSOLE_KEYMAP
+}
+
 # Global CPU vendor + microcode variables. Set by detect_cpu_vendor based on
 # /proc/cpuinfo — independent from GPU_TYPE so Intel+AMD or AMD+Nvidia boxes
 # get the right microcode.

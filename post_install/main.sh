@@ -43,6 +43,7 @@ main() {
 	# Detect hardware
 	detect_cpu_vendor
 	detect_gpu_type
+	detect_keyboard_layout
 
 	print_status "Starting package installation process..."
 

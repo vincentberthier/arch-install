@@ -19,9 +19,6 @@ echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen
 locale-gen
 echo "LANG=$LOCALE" > /etc/locale.conf
 
-# Configure keyboard
-echo "KEYMAP=$KEYBOARD" > /etc/vconsole.conf
-
 # Set hostname
 echo "$HOSTNAME" > /etc/hostname
 
@@ -74,24 +71,26 @@ sed -i 's/#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
 pacman -Sy
 
 # Configure keyboard for console/TTY
-echo "KEYMAP=fr-bepo" > /etc/vconsole.conf
-
-sh -c "$(curl -fsSL https://steevelefort.github.io/optimot-install/install.sh)"
+echo "KEYMAP=${CONSOLE_KEYMAP}" > /etc/vconsole.conf
 
 # Configure keyboard for X11/Wayland
 mkdir -p /etc/X11/xorg.conf.d
-cat > /etc/X11/xorg.conf.d/00-keyboard.conf << 'KEYBOARD_EOF'
+cat > /etc/X11/xorg.conf.d/00-keyboard.conf << KEYBOARD_EOF
 Section "InputClass"
     Identifier "system-keyboard"
     MatchIsKeyboard "on"
-    Option "XkbLayout" "fr"
-    Option "XkbVariant" "bepo"
+    Option "XkbLayout" "${KEYBOARD_LAYOUTS}"
+    Option "XkbVariant" "${KEYBOARD_VARIANTS}"
+    Option "XkbOptions" "${KEYBOARD_OPTIONS}"
 EndSection
 KEYBOARD_EOF
 
-# For Wayland compositors that don't read X11 config, set environment
-echo 'export XKB_DEFAULT_LAYOUT=fr' >> /etc/environment
-echo 'export XKB_DEFAULT_VARIANT=bepo' >> /etc/environment
+# For Wayland compositors that don't read X11 config. No 'export' prefix:
+# /etc/environment is parsed by pam_env as plain KEY=VALUE pairs, and a
+# leading 'export ' makes the variable name literally "export XKB_...".
+echo "XKB_DEFAULT_LAYOUT=${KEYBOARD_LAYOUTS}" >> /etc/environment
+echo "XKB_DEFAULT_VARIANT=${KEYBOARD_VARIANTS}" >> /etc/environment
+echo "XKB_DEFAULT_OPTIONS=${KEYBOARD_OPTIONS}" >> /etc/environment
 
 # Disable TPM
 systemctl mask systemd-tpm2-setup-early.service
@@ -100,12 +99,38 @@ systemctl mask tpm2.target
 
 EOF
 
+	install_optimot_layout
+
 	# Apply GPU-specific configuration
-	if [[ "$GPU_TYPE" == "nvidia" ]]; then
+	if gpu_has_vendor nvidia; then
 		configure_nvidia_system
 	fi
 
 	print_success "System configured with doas"
+}
+
+# The Optimot xkb layout is not packaged, so upstream ships an install script.
+# Fetch it on the live ISO -- which has curl, unlike the fresh chroot -- and
+# run it there from a file. It used to be `sh -c "$(curl ...)"` inside the
+# chroot heredoc, which spliced the downloaded text straight into that
+# heredoc: a single line reading EOF anywhere in it would have silently
+# truncated every configuration step that followed.
+install_optimot_layout() {
+	print_status "Installing the Optimot keyboard layout"
+
+	local installer="/mnt/opt/optimot-install.sh"
+
+	if ! curl -fsSL https://steevelefort.github.io/optimot-install/install.sh -o "$installer"; then
+		print_warning "Could not download the Optimot installer, skipping"
+		rm -f "$installer"
+		return 0
+	fi
+
+	if ! arch-chroot /mnt /bin/sh /opt/optimot-install.sh; then
+		print_warning "Optimot installer reported an error, continuing"
+	fi
+
+	rm -f "$installer"
 }
 
 # Pin the initramfs layout instead of inheriting whatever the mkinitcpio
