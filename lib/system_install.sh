@@ -13,19 +13,40 @@ install_base_system() {
 	# Update mirrors
 	# reflector --country France --latest 5 --sort rate --save /etc/pacman.d/mirrorlist
 
-	# Get GPU-specific packages
-	local -a gpu_packages
-	local -a lib32_gpu_packages
+	# Get GPU-specific packages. Every detected vendor gets its stack: on a
+	# hybrid laptop, installing only the discrete GPU's driver leaves the
+	# integrated one with no userspace at all.
+	local -a gpu_packages=()
+	local -a lib32_gpu_packages=()
 
-	if [[ "$GPU_TYPE" == "nvidia" ]]; then
-		gpu_packages=(nvidia-dkms nvidia-utils nvidia-settings)
-		lib32_gpu_packages=(lib32-nvidia-utils)
-	else
-		gpu_packages=(mesa vulkan-radeon xf86-video-amdgpu)
-		lib32_gpu_packages=(lib32-mesa lib32-vulkan-radeon)
+	if gpu_has_vendor nvidia; then
+		# Arch dropped the proprietary kernel modules with the 6xx series --
+		# nvidia-open-dkms is the only DKMS variant that still exists.
+		gpu_packages+=(nvidia-open-dkms nvidia-utils nvidia-settings libva-nvidia-driver)
+		lib32_gpu_packages+=(lib32-nvidia-utils)
 	fi
 
-	# Install base packages
+	# mesa backs both open stacks; add it once even when both vendors are present.
+	if gpu_has_vendor amd || gpu_has_vendor intel; then
+		gpu_packages+=(mesa)
+		lib32_gpu_packages+=(lib32-mesa)
+	fi
+
+	if gpu_has_vendor amd; then
+		gpu_packages+=(vulkan-radeon libva-mesa-driver)
+		lib32_gpu_packages+=(lib32-vulkan-radeon)
+	fi
+
+	if gpu_has_vendor intel; then
+		gpu_packages+=(vulkan-intel intel-media-driver)
+		lib32_gpu_packages+=(lib32-vulkan-intel)
+	fi
+
+	# Install base packages. `rust` is here only so makepkg can build paru in
+	# the post-install phase; install_development_packages replaces it with
+	# rustup. Never spell it `cargo` -- that is a provides shared by rust and
+	# rustup, so pacman stops to ask which one and the run is no longer
+	# unattended.
 	pacstrap -K /mnt \
 		base base-devel linux-zen linux-zen-headers linux-firmware "$CPU_MICROCODE_PKG" \
 		btrfs-progs snapper snap-pac \
@@ -33,7 +54,7 @@ install_base_system() {
 		git chezmoi fish \
 		nano helix \
 		man-db man-pages \
-		reflector cargo sddm \
+		reflector rust sddm \
 		ttf-nerd-fonts-symbols-mono ttf-fira-code ttf-jetbrains-mono-nerd \
 		"${gpu_packages[@]}" \
 		libusb hidapi

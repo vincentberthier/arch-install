@@ -81,7 +81,13 @@ efibootmgr --quiet --create \\
 LIMINE_EOF
 
     cp "${SCRIPT_DIR}/arch_wallpaper.png" /mnt/boot/wallpaper.png
-    echo "LIMIT_USAGE_PERCENT=99" > /mnt/etc/limine-snapper-sync.conf
+
+    # /etc/limine-snapper-sync.conf is owned by the limine-snapper-sync
+    # package, which is only installed later in the post-install desktop
+    # phase. Writing it here leaves an unowned file on that path and pacman
+    # then refuses to install the package at all ("exists in filesystem").
+    # configure_limine_snapper_sync in post_install/packages_desktop.sh tunes
+    # the packaged file once it is actually there.
 
     print_success "Limine installed"
 }

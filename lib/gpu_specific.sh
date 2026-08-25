@@ -28,10 +28,20 @@ EOF
 
 setup_nvidia_environment() {
     print_status "Setting up Nvidia environment variables"
-    
-    # Create environment file for Nvidia Wayland
-    doas tee /etc/environment << 'ENV_EOF'
-# Nvidia Wayland support
+
+    # Append, never overwrite: configure_system already wrote the bepo XKB
+    # defaults into /etc/environment during the base install, and a plain
+    # `tee` here would silently drop them and leave the machine on a QWERTY
+    # layout. The marker keeps re-runs of the post-install idempotent.
+    local marker="# >>> nvidia wayland (arch-install) >>>"
+
+    if doas grep -qF "$marker" /etc/environment 2>/dev/null; then
+        print_status "Nvidia environment block already present, leaving it alone"
+        return
+    fi
+
+    doas tee -a /etc/environment >/dev/null << ENV_EOF
+${marker}
 LIBVA_DRIVER_NAME=nvidia
 XDG_SESSION_TYPE=wayland
 GBM_BACKEND=nvidia-drm
@@ -40,8 +50,9 @@ WLR_NO_HARDWARE_CURSORS=1
 NVIDIA_WAYLAND=1
 QT_QPA_PLATFORM=wayland
 GDK_BACKEND=wayland
+# <<< nvidia wayland (arch-install) <<<
 ENV_EOF
-    
+
     print_success "Nvidia environment configured"
 }
 

@@ -45,18 +45,69 @@ should_run_for_host() {
     return 1
 }
 
-# Global GPU type variable
+# Global GPU state.
+#
+# GPU_VENDORS lists every GPU vendor with a display-class PCI device on this
+# machine -- a hybrid laptop has two, and both need their userspace stack or the
+# unserved one has no driver at all. GPU_TYPE names the single vendor whose
+# stack drives the session (discrete wins over integrated) and is what the
+# Limine, SDDM and /etc/environment helpers key on.
 GPU_TYPE=""
+declare -ga GPU_VENDORS=()
 
 detect_gpu_type() {
-    if lspci | grep -i nvidia &>/dev/null; then
-        GPU_TYPE="nvidia"
-        print_status "Nvidia GPU detected"
-    else
-        GPU_TYPE="amd"
-        print_status "AMD GPU assumed"
+    local display_devices=""
+    local class
+    # PCI classes 0300 (VGA), 0302 (3D) and 0380 (other display) cover every
+    # discrete and integrated GPU. Select on the class code rather than the
+    # human-readable class name: the latter matches product names too, and a
+    # "SanDisk Ultra 3D" NVMe drive is not a GPU.
+    for class in 0300 0302 0380; do
+        display_devices+="$(lspci -nn -d "::${class}")"$'\n'
+    done
+
+    GPU_VENDORS=()
+    if grep -qi 'nvidia' <<<"$display_devices"; then
+        GPU_VENDORS+=("nvidia")
     fi
+    if grep -Eqi 'amd|ati technologies|advanced micro devices' <<<"$display_devices"; then
+        GPU_VENDORS+=("amd")
+    fi
+    if grep -qi 'intel' <<<"$display_devices"; then
+        GPU_VENDORS+=("intel")
+    fi
+
+    if ((${#GPU_VENDORS[@]} == 0)); then
+        print_error "No display-class PCI device found; cannot pick a GPU stack"
+        exit 1
+    fi
+
+    # Discrete first: on a hybrid machine the dedicated GPU is the one whose
+    # environment variables and kernel parameters the session needs.
+    if gpu_has_vendor nvidia; then
+        GPU_TYPE="nvidia"
+    elif gpu_has_vendor amd; then
+        GPU_TYPE="amd"
+    else
+        GPU_TYPE="intel"
+    fi
+
+    print_status "GPU vendors detected: ${GPU_VENDORS[*]} (primary: ${GPU_TYPE})"
     export GPU_TYPE
+}
+
+# True when the machine has a GPU from the given vendor. Callers use this
+# instead of comparing against GPU_TYPE so a hybrid machine installs both
+# stacks rather than only the primary one.
+gpu_has_vendor() {
+    local wanted="$1"
+    local vendor
+    for vendor in ${GPU_VENDORS[@]+"${GPU_VENDORS[@]}"}; do
+        if [[ "$vendor" == "$wanted" ]]; then
+            return 0
+        fi
+    done
+    return 1
 }
 
 # Post-install failure tracker. Each helper that installs a package appends

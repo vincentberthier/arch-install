@@ -62,7 +62,9 @@ install_desktop_packages() {
 
 	install_aur_packages "desktop" "${aur_packages[@]}"
 
-	# Enable limine-snapper-sync service
+	# Tune and enable limine-snapper-sync now that the package -- and the
+	# config file it owns -- actually exist.
+	configure_limine_snapper_sync
 	enable_service "desktop" system limine-snapper-sync.service --now || true
 
 	# avahi for Sunshine/Moonlight mDNS discovery
@@ -86,6 +88,27 @@ install_desktop_packages() {
 	echo "zen-bin" | doas tee -a /etc/1password/custom_allowed_browsers
 
 	print_success "Desktop packages installation completed"
+}
+
+# Set a key in the limine-snapper-sync config the package ships, replacing an
+# existing assignment (commented or not) or appending when the key is absent.
+# The file must not be created ahead of the package -- see lib/bootloader.sh.
+configure_limine_snapper_sync() {
+	local conf="/etc/limine-snapper-sync.conf"
+	local key="LIMIT_USAGE_PERCENT"
+	local value="99"
+
+	if [[ ! -f "$conf" ]]; then
+		record_failure "desktop" "limine-snapper-sync" "${conf} missing, package not installed"
+		return 1
+	fi
+
+	print_status "Setting ${key}=${value} in ${conf}"
+	if grep -Eq "^#?\s*${key}=" "$conf"; then
+		doas sed -i -E "s|^#?\s*${key}=.*|${key}=${value}|" "$conf"
+	else
+		echo "${key}=${value}" | doas tee -a "$conf" >/dev/null
+	fi
 }
 
 setup_streaming_host() {

@@ -1,6 +1,33 @@
 #!/usr/bin/env bash
 # System setup functions
 
+# Apply a subset of the chezmoi source state, but only once there is a source
+# state to apply. On a fresh machine `chezmoi init` has not run yet, and a bare
+# `chezmoi apply <path>` exits non-zero on an unmanaged target -- which under
+# the orchestrator's `set -e` kills the whole post-install. Callers get a
+# recorded warning instead, and re-run the phase after `chezmoi init`.
+chezmoi_apply_if_initialised() {
+	local phase="$1"
+	shift
+
+	if ! command -v chezmoi &>/dev/null; then
+		record_failure "$phase" "chezmoi" "not installed"
+		return 1
+	fi
+
+	if ! chezmoi source-path &>/dev/null; then
+		record_failure "$phase" "chezmoi apply" "no source state yet -- run 'chezmoi init' then re-run this phase"
+		return 1
+	fi
+
+	print_status "${phase}: applying chezmoi state for $*"
+	if ! chezmoi apply "$@"; then
+		record_failure "$phase" "chezmoi apply" "apply failed for $*"
+		return 1
+	fi
+	return 0
+}
+
 setup_directories() {
 	print_status "Setting up user directories"
 
@@ -114,8 +141,10 @@ setup_duplicacy() {
 	# every machine picks up changes with a plain `chezmoi apply` instead of a
 	# re-run of the installer. chezmoi's run_onchange hook does the
 	# daemon-reload and enables the timers.
-	print_status "Applying the chezmoi-managed duplicacy configuration"
-	chezmoi apply "$HOME/.config/duplicacy" "$HOME/.config/systemd/user" "$HOME/.local/bin"
+	if ! chezmoi_apply_if_initialised "duplicacy" \
+		"$HOME/.config/duplicacy" "$HOME/.config/systemd/user" "$HOME/.local/bin"; then
+		return 0
+	fi
 
 	# Repository setup: writes .duplicacy/preferences for each backed-up folder
 	# and registers the local Aegis storage when that drive is connected.
@@ -141,8 +170,8 @@ setup_vault_code() {
 	# private_dot_config/systemd/user), so changes reach every machine with a
 	# plain `chezmoi apply`. The run_onchange hook generates the unison profile
 	# from the manifest, then reloads and enables the units.
-	print_status "Applying the chezmoi-managed vault-code configuration"
-	chezmoi apply "$HOME/.local/bin" "$HOME/.config/vault-code" "$HOME/.config/systemd/user"
+	chezmoi_apply_if_initialised "vault-code" \
+		"$HOME/.local/bin" "$HOME/.config/vault-code" "$HOME/.config/systemd/user" || true
 }
 
 setup_virtualization() {

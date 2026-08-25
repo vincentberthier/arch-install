@@ -46,8 +46,6 @@ install_paru() {
 		exit 1
 	fi
 
-	paru -Sy --noconfirm zsa-wally-cli
-
 	print_success "paru installed"
 }
 
@@ -105,6 +103,11 @@ install_core_packages() {
 		"bluetuith-bin" # TUI bluetooth manager
 		"anydesk-bin"   # Remote desktop
 		"trashy-bin"    # Safe rm replacement
+
+		# ZSA keyboard flasher. Must go through install_aur_packages: it was a
+		# bare `paru -S` call, and when upstream dropped the package the
+		# non-zero exit took the whole post-install down with it under set -e.
+		"zsa-wally-cli-git"
 	)
 
 	install_aur_packages "core" "${aur_packages[@]}"

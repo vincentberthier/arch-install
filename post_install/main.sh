@@ -77,8 +77,10 @@ main() {
 	setup_virtualization
 	setup_duplicacy
 
-	# Phase 7: GPU-specific setup
-	if [[ "$GPU_TYPE" == "nvidia" ]] && should_run_for_host "$HOSTNAME" "athena"; then
+	# Phase 7: GPU-specific setup. Driven by what detect_gpu_type found, never
+	# by a hostname list -- a machine that grows or loses an Nvidia card must
+	# not need this file edited to get the right environment.
+	if gpu_has_vendor nvidia; then
 		setup_nvidia_environment
 	fi
 
@@ -119,8 +121,11 @@ main() {
 	echo "1. Configure 1Password integration"
 	echo "2. Set up 'chezmoi init https://github.com/vincentberthier/dotfiles.git'"
 	echo "3. Apply chezmoi conf 'chezmoi apply' twice"
-	echo "4. Run ~/post_install/install_fonts.sh to install custom fonts"
-	echo "5. Log out and back in to apply all changes"
+	echo "4. Re-run ~/post_install/main.sh so the duplicacy and vault-code"
+	echo "   phases can apply the chezmoi state they need (they are skipped"
+	echo "   and reported above when chezmoi has no source state yet)"
+	echo "5. Run ~/post_install/install_fonts.sh to install custom fonts"
+	echo "6. Log out and back in to apply all changes"
 	echo
 	print_status "Manual tasks remaining:"
 	echo "- Fine-tune niri configuration"
