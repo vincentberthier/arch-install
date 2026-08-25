@@ -80,7 +80,10 @@ install_desktop_packages() {
 configure_limine_snapper_sync() {
 	local conf="/etc/limine-snapper-sync.conf"
 	local key="LIMIT_USAGE_PERCENT"
-	local value="99"
+	# The package default. limine-snapper-sync keeps a full kernel and
+	# initramfs per snapshot under limine_history, so letting it fill the ESP
+	# to 99% leaves no room for the next mkinitcpio run to land.
+	local value="85"
 
 	if [[ ! -f "$conf" ]]; then
 		record_failure "desktop" "limine-snapper-sync" "${conf} missing, package not installed"
