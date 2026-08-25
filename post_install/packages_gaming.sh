@@ -9,11 +9,23 @@ install_gaming_packages() {
         "ttf-liberation" "ttf-dejavu" "noto-fonts"
     )
     
-    # Add GPU-specific gaming tools
-    if [[ "$GPU_TYPE" == "nvidia" ]]; then
-        packages+=("nvidia-utils" "lib32-nvidia-utils" "lib32-opencl-nvidia" "lib32-libpulse" "lib32-openal" "lib32-mesa" "lib32-vulkan-icd-loader")
-    else
-        packages+=("radeontop" "corectrl" "lib32-mesa" "lib32-vulkan-radeon" "lib32-vulkan-intel")
+    # 32-bit runtime every GPU needs for Wine and Proton.
+    packages+=("lib32-libpulse" "lib32-openal" "lib32-vulkan-icd-loader")
+
+    # Add GPU-specific gaming tools, one block per detected vendor: a hybrid
+    # machine has to have both 32-bit driver stacks present, since Proton
+    # picks the GPU at launch time.
+    if gpu_has_vendor nvidia; then
+        packages+=("nvidia-utils" "lib32-nvidia-utils" "lib32-opencl-nvidia")
+    fi
+    if gpu_has_vendor amd || gpu_has_vendor intel; then
+        packages+=("lib32-mesa")
+    fi
+    if gpu_has_vendor amd; then
+        packages+=("radeontop" "corectrl" "lib32-vulkan-radeon")
+    fi
+    if gpu_has_vendor intel; then
+        packages+=("lib32-vulkan-intel")
     fi
     
     print_status "Installing Gaming packages (${#packages[@]} packages)"

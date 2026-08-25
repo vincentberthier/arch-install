@@ -96,12 +96,21 @@ install_core_packages() {
 		"exfatprogs"
 	)
 
-	# Add GPU-specific core packages
-	if [[ "$GPU_TYPE" == "nvidia" ]]; then
+	# Add GPU-specific core packages, one block per detected vendor rather
+	# than an either/or: a hybrid machine needs both stacks, and an
+	# Intel-only one must not be handed vulkan-radeon.
+	if gpu_has_vendor nvidia; then
 		# Already installed during base install, but ensure they're there
 		packages+=("nvidia-utils" "nvidia-settings")
-	else
-		packages+=("mesa" "lib32-mesa" "vulkan-radeon" "lib32-vulkan-radeon")
+	fi
+	if gpu_has_vendor amd || gpu_has_vendor intel; then
+		packages+=("mesa" "lib32-mesa")
+	fi
+	if gpu_has_vendor amd; then
+		packages+=("vulkan-radeon" "lib32-vulkan-radeon")
+	fi
+	if gpu_has_vendor intel; then
+		packages+=("vulkan-intel" "lib32-vulkan-intel")
 	fi
 
 	print_status "Installing Core packages (${#packages[@]} packages)"
