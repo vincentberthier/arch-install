@@ -4,8 +4,8 @@ Arch Linux installation automation scripts. Pure Bash, no build system, no tests
 
 **Required skills -- load these before any work in this repo:**
 
-- `bash-coding` -- before writing or modifying any script
-- `repo-management` -- before any VCS operation (commit, branch, describe)
+- `tyrex-lang-common:bash` -- before writing or modifying any script
+- `tyrex-vcs:repo-management` -- before any VCS operation (commit, branch, describe)
 
 ## Project Overview
 
@@ -49,7 +49,7 @@ bash -x post_install/main.sh
 
 ## Project-Specific Conventions
 
-These override or supplement the `bash-coding` skill defaults.
+These override or supplement the `tyrex-lang-common:bash` skill defaults.
 
 ### Strict Mode in Libraries
 
@@ -107,7 +107,7 @@ AUR packages use `paru -S --needed --noconfirm` individually.
 
 ### Error Handling Tiers
 
-Beyond what the `bash-coding` skill prescribes, this project uses three tiers:
+Beyond what the `tyrex-lang-common:bash` skill prescribes, this project uses three tiers:
 
 - **Hard exit** for critical preconditions: `print_error "..."; exit 1`
 - **Soft warning** for non-critical package failures: `print_warning "...continuing"`
@@ -161,5 +161,7 @@ When adding new functionality:
 
 ## Version Control
 
-Uses Jujutsu (`jj`), not raw git. Commit messages are short, imperative, lowercase,
-no trailing period: `add thunar`, `fix duplicacy scripts`, `split scripts for modularity`.
+Uses Jujutsu (`jj`), not raw git. Commit messages follow Conventional Commits, as
+prescribed by the `tyrex-vcs:repo-management` skill: `type(scope): description`,
+imperative, lowercase, no trailing period -- `feat(core): add sshfs`,
+`fix(firewall): iifname/oifname so missing virbr0 does not break load`.
