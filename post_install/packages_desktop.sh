@@ -26,22 +26,13 @@ install_desktop_packages() {
 		"libreoffice-fresh" "obsidian" "qbittorrent" "gwenview" "zathura" "okular"
 		"mpv" "vlc" "gimp" "gimp-plugin-gmic"
 
-		# mDNS: resolves <hostname>.local across the LAN without DNS entries,
-		# and is how Moonlight finds the streaming host.
+		# mDNS: resolves <hostname>.local across the LAN without DNS entries.
 		"avahi" "nss-mdns"
 
 		# Speech-to-text. Was whisper.cpp-vulkan from the AUR; that package is
 		# gone and whisper-cpp is in extra at the same upstream version.
 		"whisper-cpp"
 	)
-
-	# Sunshine/Moonlight split: hephaistos hosts the stream (sunshine from AUR),
-	# every other desktop is a client (moonlight-qt + wakeonlan).
-	if should_run_for_host "$HOSTNAME" "hephaistos"; then
-		packages+=("seatd")
-	else
-		packages+=("moonlight-qt" "wakeonlan")
-	fi
 
 	print_status "Installing Desktop packages (${#packages[@]} packages)"
 	install_pacman_packages "desktop" "${packages[@]}"
@@ -70,18 +61,8 @@ install_desktop_packages() {
 	configure_limine_snapper_sync
 	enable_service "desktop" system limine-snapper-sync.service --now || true
 
-	# avahi for Sunshine/Moonlight mDNS discovery
+	# avahi resolves <hostname>.local across the LAN
 	enable_service "desktop" system avahi-daemon.service --now || true
-
-	# Sunshine streaming host setup (hephaistos) vs Moonlight client setup
-	# (everyone else). Host boots headless to a TTY, is woken via WOL, and
-	# starts niri+sunshine on demand via an SSH-triggered helper. Clients
-	# get a wrapper script + fuzzel-visible desktop entry to drive it.
-	if should_run_for_host "$HOSTNAME" "hephaistos"; then
-		setup_streaming_host
-	else
-		setup_streaming_client
-	fi
 
 	# Install problematic AUR packages with PGP issues
 	install_pgp_messed_up_packages
@@ -112,183 +93,6 @@ configure_limine_snapper_sync() {
 	else
 		echo "${key}=${value}" | doas tee -a "$conf" >/dev/null
 	fi
-}
-
-setup_streaming_host() {
-	print_status "Setting up Sunshine streaming host (hephaistos)"
-
-	# Sunshine itself is an AUR build.
-	install_aur_packages "streaming-host" sunshine
-
-	# seatd mediates DRM/input access without a logind graphical session, so
-	# niri started from an SSH shell can grab the GPU. vincent must be in the
-	# seat group for seatd's socket to be usable.
-	enable_service "streaming-host" system seatd.service --now || true
-	doas usermod -a -G seat "$USER"
-
-	# Sunshine injects remote keyboard/mouse/gamepad events via /dev/uinput,
-	# which needs: (1) DAC access — udev rule grants group 'input' 0660,
-	# (2) CAP_SYS_ADMIN for the UI_* ioctls, (3) CAP_SYS_NICE so sunshine's
-	# nice -10/-15 priority raises don't fail. The setcap is lost on every
-	# paru rebuild of sunshine, so this function must re-run on upgrades.
-	print_status "Configuring uinput access for sunshine"
-	doas tee /etc/udev/rules.d/85-sunshine.rules >/dev/null <<'UINPUT_EOF'
-KERNEL=="uinput", SUBSYSTEM=="misc", OPTIONS+="static_node=uinput", TAG+="uaccess", OPTIONS+="mode=0660", GROUP="input"
-UINPUT_EOF
-	doas udevadm control --reload
-	doas udevadm trigger
-	doas usermod -a -G input "$USER"
-	# The AUR package installs a versioned binary (e.g. /usr/bin/sunshine-YYYY.MM.DD…)
-	# and symlinks /usr/bin/sunshine to it. setcap refuses symlinks, so
-	# resolve to the real path; every upgrade bumps the versioned filename.
-	local sunshine_bin
-	sunshine_bin="$(readlink -f "$(command -v sunshine)")"
-	doas setcap 'cap_sys_admin,cap_sys_nice+p' "$sunshine_bin"
-
-	# vkms (virtual KMS) gives niri a connected virtual output on a headless
-	# host. Without it niri enumerates zero outputs and sunshine finds no
-	# monitor to capture — every encoder probe fails. Load at boot so the
-	# streaming session launcher doesn't need root to modprobe.
-	print_status "Enabling vkms for headless virtual display"
-	doas tee /etc/modules-load.d/vkms.conf >/dev/null <<'VKMS_EOF'
-vkms
-VKMS_EOF
-
-	# Disable SDDM: hephaistos is headless, no one ever physically logs in.
-	# Fall back to multi-user.target so boot lands on a TTY prompt nobody
-	# touches — SSH becomes the only real entry point.
-	print_status "Disabling SDDM, switching default target to multi-user"
-	doas systemctl disable sddm.service 2>/dev/null || true
-	doas systemctl set-default multi-user.target
-
-	# Streaming session launcher — started on demand via SSH from a client.
-	# Drives everything through the systemd user manager: niri.service runs
-	# the compositor, graphical-session.target pulls up sunshine.service
-	# (WantedBy=graphical-session.target) and xdg-desktop-portal-gnome
-	# (Requisite=graphical-session.target).
-	doas tee /usr/local/bin/start-streaming >/dev/null <<'STREAM_EOF'
-#!/usr/bin/env bash
-# Launch the headless niri + sunshine session. Idempotent.
-set -euo pipefail
-
-if systemctl --user is-active --quiet sunshine.service; then
-    echo "sunshine already running"
-    exit 0
-fi
-
-export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-mkdir -p "$XDG_RUNTIME_DIR"
-export XDG_CURRENT_DESKTOP=niri
-export XDG_SESSION_TYPE=wayland
-
-systemctl --user reset-failed 2>/dev/null || true
-
-# Seed the user manager + D-Bus activation env with the compositor identity
-# before anything D-Bus activates xdg-desktop-portal. The portal picks a
-# backend based on XDG_CURRENT_DESKTOP at first activation and caches that
-# choice — an SSH login had it empty, so the portal latched onto the gtk
-# fallback (no ScreenCast) until we re-seed.
-systemctl --user import-environment XDG_RUNTIME_DIR XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
-dbus-update-activation-environment --systemd XDG_RUNTIME_DIR XDG_CURRENT_DESKTOP XDG_SESSION_TYPE
-
-# Stop any stale portal state from the empty-env login so the next bus
-# activation re-reads niri-portals.conf and picks xdg-desktop-portal-gnome.
-systemctl --user stop \
-    xdg-desktop-portal.service \
-    xdg-desktop-portal-gtk.service \
-    xdg-desktop-portal-gnome.service 2>/dev/null || true
-pkill -u "$USER" -x xdg-desktop-por 2>/dev/null || true
-
-# niri.service is Type=notify + BindsTo=graphical-session.target, so
-# starting it activates the target, which in turn pulls up sunshine.service.
-# We still start sunshine.service explicitly so this script waits for it
-# to be Active before returning.
-systemctl --user start niri.service sunshine.service
-
-echo "streaming session up"
-STREAM_EOF
-	doas chmod +x /usr/local/bin/start-streaming
-
-	doas tee /usr/local/bin/stop-streaming >/dev/null <<'STOP_EOF'
-#!/usr/bin/env bash
-# Tear down the headless streaming session cleanly.
-set -euo pipefail
-systemctl --user stop sunshine.service niri.service 2>/dev/null || true
-echo "streaming session stopped"
-STOP_EOF
-	doas chmod +x /usr/local/bin/stop-streaming
-
-	print_success "Streaming host configured — boot into multi-user, SSH in, run start-streaming"
-}
-
-setup_streaming_client() {
-	print_status "Setting up Moonlight streaming client"
-
-	# Wrapper: WOL → wait for SSH → trigger remote start-streaming → launch
-	# moonlight pointed at hephaistos. Installed system-wide so the fuzzel
-	# .desktop entry can Exec= it without needing $HOME expansion.
-	doas tee /usr/local/bin/stream-hephaistos >/dev/null <<'CLIENT_EOF'
-#!/usr/bin/env bash
-set -euo pipefail
-
-readonly HOST="hephaistos"
-readonly MAC="fc:4c:ea:25:6a:96"
-readonly APP="Desktop"
-
-notify() {
-    if command -v notify-send >/dev/null 2>&1; then
-        notify-send -a "stream-hephaistos" "$1" "${2:-}"
-    fi
-    echo "[stream-hephaistos] $1${2:+: $2}"
-}
-
-ssh_ready() {
-    ssh -o ConnectTimeout=1 -o BatchMode=yes "$HOST" true >/dev/null 2>&1
-}
-
-if ! ssh_ready; then
-    notify "Waking hephaistos"
-    wakeonlan "$MAC" >/dev/null
-    waited=0
-    until ssh_ready; do
-        if ((waited >= 60)); then
-            notify "Wake timeout" "hephaistos did not respond within 60s"
-            exit 1
-        fi
-        sleep 1
-        waited=$((waited + 1))
-    done
-fi
-
-notify "Starting streaming session"
-if ! ssh "$HOST" /usr/local/bin/start-streaming; then
-    notify "Remote launch failed" "start-streaming returned non-zero"
-    exit 1
-fi
-
-notify "Launching Moonlight"
-setsid --fork moonlight stream "$HOST" "$APP" \
-    >/dev/null 2>&1 </dev/null
-CLIENT_EOF
-	doas chmod +x /usr/local/bin/stream-hephaistos
-
-	# Fuzzel / app-launcher entry. Lives under /usr/local/share so it's
-	# picked up via XDG_DATA_DIRS without touching chezmoi territory.
-	doas mkdir -p /usr/local/share/applications
-	doas tee /usr/local/share/applications/stream-hephaistos.desktop >/dev/null <<'DESKTOP_EOF'
-[Desktop Entry]
-Type=Application
-Name=Stream hephaistos
-GenericName=Moonlight Streaming
-Comment=Wake hephaistos, start the streaming session, and open Moonlight
-Exec=/usr/local/bin/stream-hephaistos
-Icon=moonlight
-Terminal=false
-Categories=Network;RemoteAccess;
-Keywords=moonlight;sunshine;remote;stream;wake;
-DESKTOP_EOF
-
-	print_success "Streaming client configured (stream-hephaistos + fuzzel entry)"
 }
 
 install_pgp_messed_up_packages() {
