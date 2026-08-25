@@ -2,9 +2,9 @@
 # Snapper configuration
 
 setup_snapper() {
-    print_status "Setting up Snapper"
-    
-    arch-chroot /mnt /bin/bash << 'EOF'
+	print_status "Setting up Snapper"
+
+	arch-chroot /mnt /bin/bash <<'EOF'
 # Create snapper config for root (let it create its own .snapshots)
 snapper -c root create-config /
 
@@ -42,5 +42,5 @@ systemctl enable snapper-cleanup.timer
 
 EOF
 
-    print_success "Snapper configured"
+	print_success "Snapper configured"
 }

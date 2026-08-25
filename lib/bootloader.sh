@@ -2,36 +2,36 @@
 # Bootloader installation and configuration
 
 install_limine() {
-    print_status "Installing Limine bootloader (UEFI)"
+	print_status "Installing Limine bootloader (UEFI)"
 
-    # Install the limine userland and efibootmgr in the target system. We do
-    # not run `limine bios-install`: the disk layout is GPT + ESP only (no
-    # BIOS boot partition) and the installer enforces UEFI via check_uefi.
-    arch-chroot /mnt /bin/bash << 'EOF'
+	# Install the limine userland and efibootmgr in the target system. We do
+	# not run `limine bios-install`: the disk layout is GPT + ESP only (no
+	# BIOS boot partition) and the installer enforces UEFI via check_uefi.
+	arch-chroot /mnt /bin/bash <<'EOF'
 pacman -Sy
 pacman -S --noconfirm --needed limine efibootmgr
 EOF
 
-    # Configure based on GPU type. Microcode image comes from CPU_MICROCODE_IMG
-    # (set by detect_cpu_vendor), independent of the GPU choice.
-    # resume=/resume_offset= point the kernel at the hibernation image in the
-    # btrfs swapfile. systemd-hibernate-resume can also pick the location up
-    # from the HibernateLocation EFI variable, but that is only set while a
-    # hibernation image exists -- the kernel parameters are what make the
-    # setup survive a cleared or unavailable variable.
-    local KERNEL_PARAMS="root=LABEL=ARCH rootflags=subvol=@ rw quiet loglevel=3"
-    KERNEL_PARAMS="$KERNEL_PARAMS resume=LABEL=ARCH resume_offset=${SWAP_RESUME_OFFSET}"
-    local MICROCODE_IMG="$CPU_MICROCODE_IMG"
+	# Configure based on GPU type. Microcode image comes from CPU_MICROCODE_IMG
+	# (set by detect_cpu_vendor), independent of the GPU choice.
+	# resume=/resume_offset= point the kernel at the hibernation image in the
+	# btrfs swapfile. systemd-hibernate-resume can also pick the location up
+	# from the HibernateLocation EFI variable, but that is only set while a
+	# hibernation image exists -- the kernel parameters are what make the
+	# setup survive a cleared or unavailable variable.
+	local KERNEL_PARAMS="root=LABEL=ARCH rootflags=subvol=@ rw quiet loglevel=3"
+	KERNEL_PARAMS="$KERNEL_PARAMS resume=LABEL=ARCH resume_offset=${SWAP_RESUME_OFFSET}"
+	local MICROCODE_IMG="$CPU_MICROCODE_IMG"
 
-    if [[ "$GPU_TYPE" == "nvidia" ]]; then
-        print_status "Configuring Limine for Nvidia GPU"
-        KERNEL_PARAMS="$KERNEL_PARAMS $(get_nvidia_kernel_params)"
-    else
-        print_status "Configuring Limine for AMD GPU"
-        KERNEL_PARAMS="$KERNEL_PARAMS $(get_amd_kernel_params)"
-    fi
+	if [[ "$GPU_TYPE" == "nvidia" ]]; then
+		print_status "Configuring Limine for Nvidia GPU"
+		KERNEL_PARAMS="$KERNEL_PARAMS $(get_nvidia_kernel_params)"
+	else
+		print_status "Configuring Limine for AMD GPU"
+		KERNEL_PARAMS="$KERNEL_PARAMS $(get_amd_kernel_params)"
+	fi
 
-    arch-chroot /mnt /bin/bash << LIMINE_EOF
+	arch-chroot /mnt /bin/bash <<LIMINE_EOF
 set -euo pipefail
 
 # Write the Limine config at the ESP root. Limine searches for limine.conf
@@ -91,14 +91,14 @@ efibootmgr --quiet --create \\
     --loader '\\EFI\\limine\\limine_x64.efi'
 LIMINE_EOF
 
-    cp "${SCRIPT_DIR}/arch_wallpaper.png" /mnt/boot/wallpaper.png
+	cp "${SCRIPT_DIR}/arch_wallpaper.png" /mnt/boot/wallpaper.png
 
-    # /etc/limine-snapper-sync.conf is owned by the limine-snapper-sync
-    # package, which is only installed later in the post-install desktop
-    # phase. Writing it here leaves an unowned file on that path and pacman
-    # then refuses to install the package at all ("exists in filesystem").
-    # configure_limine_snapper_sync in post_install/packages_desktop.sh tunes
-    # the packaged file once it is actually there.
+	# /etc/limine-snapper-sync.conf is owned by the limine-snapper-sync
+	# package, which is only installed later in the post-install desktop
+	# phase. Writing it here leaves an unowned file on that path and pacman
+	# then refuses to install the package at all ("exists in filesystem").
+	# configure_limine_snapper_sync in post_install/packages_desktop.sh tunes
+	# the packaged file once it is actually there.
 
-    print_success "Limine installed"
+	print_success "Limine installed"
 }
