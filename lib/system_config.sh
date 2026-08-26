@@ -259,6 +259,14 @@ define STEAM_STREAMING_UDP = { 27000-27100 }     # Steam In-Home Streaming UDP r
 define STEAM_DISCOVERY = { 27036 }               # Steam discovery
 define STEAM_BROADCAST_DISCOVERY = { 27036 }     # Steam broadcast discovery
 
+# Source networks treated as "the LAN" for services that have no business being
+# reachable from the internet. IPv6 covers link-local and ULA plus the
+# ISP-delegated global prefix — update that last entry if the ISP renumbers,
+# otherwise LAN peers reaching us from their global address lose access
+# (link-local and ULA keep working regardless).
+define LAN_V4 = { 192.168.0.0/16, 10.0.0.0/8, 172.16.0.0/12 }
+define LAN_V6 = { fe80::/10, fc00::/7, 2a01:e0a:36e:b30::/64 }
+
 table inet filter {
     chain input {
         # Base chain with drop policy
@@ -287,11 +295,29 @@ table inet filter {
         # HTTP and HTTPS
         tcp dport { \$HTTP_PORT, \$HTTPS_PORT } ct state new accept
 
+        # LAN-only services. IPv6 has no NAT to hide behind, so an unqualified
+        # accept publishes these to the whole internet the moment the host
+        # holds a global address.
+        ip saddr \$LAN_V4 jump lan_services
+        ip6 saddr \$LAN_V6 jump lan_services
+
+        # Log dropped packets (optional - comment out if too verbose)
+        # limit rate 5/minute log prefix "nftables-dropped: "
+
+        # Drop everything else (implicit due to policy drop)
+    }
+
+    # Reached only through the jumps above, so every rule here is implicitly
+    # LAN-only. A packet matching nothing falls back to the input chain's
+    # drop policy.
+    chain lan_services {
+        # DNS — dnsmasq only ever binds the libvirt bridge, whose 192.168.122.0/24
+        # is inside LAN_V4, so nothing legitimate is lost by keeping this off the
+        # internet.
+        udp dport \$DNS_PORT accept
+
         # Custom TCP ports
         tcp dport \$CUSTOM_TCP_PORTS ct state new accept
-
-        # DNS
-        udp dport \$DNS_PORT accept
 
         # mDNS for hostname.local resolution
         udp dport \$MDNS_PORT accept
@@ -323,11 +349,6 @@ table inet filter {
 
         # Steam broadcasting and remote play discovery
         udp dport 27036 accept
-
-        # Log dropped packets (optional - comment out if too verbose)
-        # limit rate 5/minute log prefix "nftables-dropped: "
-
-        # Drop everything else (implicit due to policy drop)
     }
 
     chain forward {
@@ -367,8 +388,8 @@ systemctl start nftables.service
 EOF
 
 	print_success "Firewall setup completed"
-	print_status "Open TCP: 22 (SSH), 80 (HTTP), 443 (HTTPS), 1234, 2222, 8080"
-	print_status "Open UDP: 53 (DNS), Steam ports"
+	print_status "Open to any source -- TCP: 22 (SSH), 80 (HTTP), 443 (HTTPS)"
+	print_status "Open to LAN sources only -- TCP 1234, 2222, 8080; UDP 53 (DNS), 5353 (mDNS); Steam ports"
 	print_warning "Ensure you have SSH access before disconnecting"
 	print_warning "Config saved in /etc/nftables.conf, reload with: systemctl reload nftables"
 }
