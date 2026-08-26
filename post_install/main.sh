@@ -81,6 +81,7 @@ main() {
 	# Phase 6: User environment setup
 	setup_shell_environment
 	setup_systemd_services
+	harden_sshd
 	setup_virtualization
 	setup_duplicacy
 

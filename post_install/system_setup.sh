@@ -131,6 +131,59 @@ EOF
 	print_success "Systemd services configured"
 }
 
+## Harden sshd, once key-based login is actually possible.
+##
+## The drop-in is named to sort BEFORE install.conf, because sshd keeps the
+## FIRST value it reads for a keyword and install.conf deliberately sets
+## PasswordAuthentication yes -- a freshly installed host carries no key yet, so
+## a password is the only way back into it. By this point chezmoi has rendered
+## one, and the base install's choice can be revoked.
+##
+## Password auth is only disabled when a key is really present. That check is
+## the difference between hardening a host and locking yourself out of one.
+harden_sshd() {
+	local dropin="/etc/ssh/sshd_config.d/10-hardening.conf"
+	local authorized_keys="${HOME}/.ssh/authorized_keys"
+
+	print_status "Hardening sshd"
+
+	chezmoi_apply_if_initialised "sshd" "${authorized_keys}" || true
+
+	if [[ ! -s "${authorized_keys}" ]]; then
+		print_warning "No authorized key present -- leaving password authentication enabled"
+		return 0
+	fi
+
+	{
+		printf '# Sorts before install.conf: sshd keeps the FIRST value per keyword.\n'
+		printf 'PasswordAuthentication no\n'
+		printf 'KbdInteractiveAuthentication no\n'
+		printf 'PermitRootLogin no\n'
+		printf 'MaxAuthTries 3\n'
+		printf 'LoginGraceTime 20\n'
+
+		# hephaistos answers on a second port too: it is reachable from the
+		# internet through a Freebox port forward, and the shared IPv4 reserves
+		# everything below 49152 for the three other subscribers sharing that
+		# address, so the public port cannot be 22. Port is additive in sshd,
+		# unlike every other keyword here, so 22 from install.conf survives.
+		if should_run_for_host "$HOSTNAME" "hephaistos"; then
+			printf 'Port 50022\n'
+		fi
+	} | doas tee "${dropin}" >/dev/null
+
+	doas chmod 644 "${dropin}"
+
+	if ! doas sshd -t; then
+		print_error "sshd rejected ${dropin} -- removing it, sshd left as it was"
+		doas rm -f "${dropin}"
+		return 1
+	fi
+
+	doas systemctl reload sshd
+	print_success "sshd hardened: key-only authentication"
+}
+
 setup_duplicacy() {
 	if ! command -v duplicacy &>/dev/null; then
 		paru -S --noconfirm duplicacy rclone
