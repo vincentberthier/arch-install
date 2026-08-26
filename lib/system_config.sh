@@ -241,7 +241,11 @@ cat > /etc/nftables.conf << 'NFTABLES_EOF'
 flush ruleset
 
 # Define variables for easier management
-define SSH_PORT = 22
+# 22 serves the LAN and IPv6, where port 22 is reachable directly. 50022 is the
+# WAN port the Freebox forwards on: the shared IPv4 reserves everything below
+# 49152 for the three other subscribers on the same address, so the public SSH
+# port cannot be 22.
+define SSH_PORT = { 22, 50022 }
 define HTTP_PORT = 80
 define HTTPS_PORT = 443
 define CUSTOM_TCP_PORTS = { 1234, 2222, 8080 }
